@@ -2,6 +2,7 @@ mod core_cli;
 mod server;
 mod ipc;
 mod core_network;
+mod core_log;
 mod core_ftpcommand;
 
 use crate::core_cli::Cli;
