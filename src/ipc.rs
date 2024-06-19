@@ -1,6 +1,7 @@
 use shared_memory::*;
 use std::num::ParseIntError;
 use thiserror::Error;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Error)]
 pub enum IpcError {
@@ -10,41 +11,16 @@ pub enum IpcError {
     ParseError(#[from] ParseIntError),
 }
 
+#[derive(Clone)]
 pub struct Ipc {
     pub ipc_key: String,
-    #[allow(dead_code)]
-    pub memory: Shmem,
+    pub memory: Arc<Mutex<Vec<u8>>>, // Use a Vec<u8> wrapped in Arc<Mutex>> for shared memory
 }
 
 impl Ipc {
     pub fn new(ipc_key: String) -> Self {
-        let memory = match ShmemConf::new().size(1024).os_id(&ipc_key).create() {
-            Ok(memory) => memory,
-            Err(ShmemError::MappingIdExists) => {
-                // If the default ID exists, try to create a new unique ID
-                let mut attempt = 1;
-                loop {
-                    match Self::generate_unique_key(&ipc_key, attempt) {
-                        Ok(unique_key) => match ShmemConf::new()
-                            .size(1024)
-                            .os_id(&unique_key)
-                            .create()
-                        {
-                            Ok(memory) => break memory,
-                            Err(ShmemError::MappingIdExists) => {
-                                attempt += 1;
-                                if attempt > 10 {
-                                    panic!("Failed to create unique shared memory segment after multiple attempts.");
-                                }
-                            }
-                            Err(e) => panic!("Failed to create shared memory: {:?}", e),
-                        },
-                        Err(e) => panic!("Failed to generate unique key: {:?}", e),
-                    }
-                }
-            }
-            Err(e) => panic!("Failed to create shared memory: {:?}", e),
-        };
+        // Simulate shared memory with a Vec<u8>
+        let memory = Arc::new(Mutex::new(vec![0; 1024]));
 
         Self { ipc_key, memory }
     }
@@ -55,7 +31,7 @@ impl Ipc {
         }
 
         let key_num = u32::from_str_radix(&ipc_key[2..], 16)?;
-        let unique_key = format!("0x{:08X}", key_num + attempt);
+        let unique_key = format!("{:08X}", key_num + attempt);
         Ok(unique_key)
     }
 }
