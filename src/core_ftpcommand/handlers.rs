@@ -25,5 +25,9 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
         Box::pin(crate::core_ftpcommand::pwd::handle_pwd_command(writer, config, arg.to_string()))
     })));
 
+    handlers.insert("LIST".to_string(), Arc::new(Box::new(|writer, config, arg| {
+        Box::pin(crate::core_ftpcommand::list::handle_list_command(writer, config, arg.to_string()))
+    })));
+
     handlers
 }
