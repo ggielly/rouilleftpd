@@ -13,12 +13,17 @@ pub async fn handle_cwd_command(
 ) -> Result<(), std::io::Error> {
     let mut session = session.lock().await;
     let min_homedir = config.server.min_homedir.trim_start_matches('/');
+
+    // Ensure the new directory is correctly handled as a relative path
     let new_dir = if arg.starts_with('/') {
         PathBuf::from(&arg)
     } else {
         PathBuf::from(&session.current_dir).join(&arg)
     };
-    let dir_path = PathBuf::from(&config.server.chroot_dir).join(min_homedir).join(new_dir.trim_start_matches('/'));
+
+    // Convert PathBuf to String, perform trimming, and then convert back to PathBuf
+    let new_dir_str = new_dir.to_str().unwrap().trim_start_matches('/').to_string();
+    let dir_path = PathBuf::from(&config.server.chroot_dir).join(min_homedir).join(new_dir_str);
 
     if dir_path.is_dir() {
         session.current_dir = new_dir.to_str().unwrap().to_string();

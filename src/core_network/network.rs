@@ -30,7 +30,7 @@ pub async fn start_server(listen_port: u16, config: Arc<Config>, ipc: Ipc) -> Re
     }
 }
 
-async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: Ipc) -> Result<()> {
+pub async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: crate::ipc::Ipc) -> Result<()> {
     // Load and send the banner text
     let banner_path = if cfg!(target_os = "windows") {
         "ftp-data/text/banner.txt"
@@ -47,6 +47,7 @@ async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: Ipc) ->
     }
 
     let handlers = initialize_command_handlers();
+    let session = Arc::new(Mutex::new(Session::new()));
     let mut buffer = String::new();
 
     loop {
@@ -70,7 +71,7 @@ async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: Ipc) ->
         let arg = parts.get(1).map(|s| s.to_string()).unwrap_or_default();
 
         if let Some(handler) = handlers.get(&cmd) {
-            handler(Arc::clone(&socket), Arc::clone(&config), arg).await?;
+            handler(Arc::clone(&socket), Arc::clone(&config), Arc::clone(&session), arg).await?;
         } else {
             let mut socket = socket.lock().await;
             socket.write_all(b"502 Command not implemented.\r\n").await?;

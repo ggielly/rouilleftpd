@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::net::TcpStream;
 use crate::Config;
 use crate::Session;
 use std::pin::Pin;
 use std::future::Future;
-use tokio::net::TcpStream;
 
 type BoxedHandler = Box<dyn Fn(Arc<Mutex<TcpStream>>, Arc<Config>, Arc<Mutex<Session>>, String) -> Pin<Box<dyn Future<Output = Result<(), std::io::Error>> + Send>> + Send + Sync>;
 

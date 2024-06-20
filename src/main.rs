@@ -40,6 +40,9 @@ struct Config {
     server: ServerConfig,
 }
 
+
+
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // Parse CLI arguments
