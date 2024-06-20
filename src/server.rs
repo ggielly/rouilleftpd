@@ -1,6 +1,6 @@
 use crate::core_network::network;
-use crate::Config;
 use crate::ipc::Ipc;
+use crate::Config;
 use anyhow::Result;
 use std::sync::Arc;
 
