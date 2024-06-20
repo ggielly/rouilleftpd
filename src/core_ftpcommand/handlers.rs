@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::net::TcpStream;
 use crate::Config;
-use crate::Session;
+use crate::core_network::Session;
 use std::pin::Pin;
 use std::future::Future;
 

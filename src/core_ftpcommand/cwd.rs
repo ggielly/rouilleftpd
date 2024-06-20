@@ -2,8 +2,10 @@ use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use crate::{Config, Session};
+use crate::Config;
 use std::path::PathBuf;
+use crate::core_network::Session;
+
 
 pub async fn handle_cwd_command(
     writer: Arc<Mutex<TcpStream>>,

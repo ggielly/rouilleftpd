@@ -3,7 +3,8 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::io::AsyncWriteExt;
-use crate::{Config, Session, initialize_command_handlers};
+use crate::{Config, initialize_command_handlers};
+use crate::core_network::Session;
 
 async fn handle_connection(stream: TcpStream, config: Arc<Config>) -> Result<(), std::io::Error> {
     let handlers = initialize_command_handlers();
