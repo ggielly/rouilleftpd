@@ -4,3 +4,4 @@ pub mod quit;
 pub mod handlers;
 pub mod pwd;
 pub mod list;
+pub mod cwd;

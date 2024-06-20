@@ -1,19 +1,32 @@
 mod core_cli;
-mod server;
-mod ipc;
-mod core_network;
-mod core_log;
 mod core_ftpcommand;
+mod core_log;
+mod core_network;
+mod ipc;
+mod server;
 
 use crate::core_cli::Cli;
+use anyhow::{Context, Result};
 use ipc::Ipc;
 use serde::Deserialize;
 use std::fs;
 use structopt::StructOpt;
-use anyhow::{Context, Result};
 use tokio;
 
+pub struct Session {
+    pub current_dir: String,
+}
+
+impl Session {
+    pub fn new() -> Self {
+        Self {
+            current_dir: String::from("/"),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
+// Configuration file
 struct ServerConfig {
     listen_port: u16,
     pasv_address: String,
