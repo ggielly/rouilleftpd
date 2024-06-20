@@ -1,10 +1,9 @@
 # rouilleFTPd
- **rouilleftpd** (WIP) is a highly configurable and robust FTP server written in Rust. It supports both IPv4 and IPv6, and allows for configuration via a TOML file. 
+ **rouilleftpd** (WIP) is a highly configurable and robust FTP server written in Rust.
 
 ## Features
 
 - Configuration via `rouilleftpd.conf` file (TOML syntax)
-- Supports both IPv4 and IPv6
 - Shared memory for inter-process communication (IPC)
 - Asynchronous I/O operations using `tokio`
 - Command-line argument handling
