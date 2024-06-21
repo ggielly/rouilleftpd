@@ -167,5 +167,22 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
         })),
     );
 
+    handlers.insert(
+        "STOR".to_string(),
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(async move {
+                // Create a data connection here
+                let data_stream = Arc::new(Mutex::new(TcpStream::connect("localhost:20").await.unwrap()));
+                crate::core_ftpcommand::stor::handle_stor_command(
+                    writer,
+                    data_stream,
+                    config,
+                    session,
+                    arg.to_string(),
+                ).await
+            })
+        })),
+    );
+
     handlers
 }

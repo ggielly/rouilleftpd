@@ -13,6 +13,7 @@ pub mod dele;
 pub mod rnfr;
 pub mod rnto;
 pub mod retr;
+pub mod stor;
 
 // The utils and common functions are here
 pub mod utils;
