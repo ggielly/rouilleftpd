@@ -7,6 +7,10 @@ use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
+// Specific crated for PORT and PASV commands
+use crate::core_network::port;
+use crate::core_network::pasv;
+
 type BoxedHandler = Box<
     dyn Fn(
             Arc<Mutex<TcpStream>>,
@@ -183,6 +187,31 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
             })
         })),
     );
+
+    handlers.insert(
+        "PORT".to_string(),
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(port::handle_port_command(
+                writer,
+                config,
+                session,
+                arg.to_string(),
+            ))
+        })),
+    );
+
+    handlers.insert(
+        "PASV".to_string(),
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(pasv::handle_pasv_command(
+                writer,
+                config,
+                session,
+                arg.to_string(),
+            ))
+        })),
+    );
+
 
     handlers
 }
