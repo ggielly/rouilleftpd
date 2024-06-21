@@ -9,6 +9,9 @@ pub mod cwd;
 pub mod noop;
 pub mod mkd;
 pub mod rmd;
+pub mod dele;
+pub mod rnfr;
+pub mod rnto;
 
 // The utils and common functions are here
 pub mod utils;

@@ -120,5 +120,40 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
         })),
     );
 
+    handlers.insert(
+        "DELE".to_string(),
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(crate::core_ftpcommand::dele::handle_dele_command(
+                writer,
+                config,
+                session,
+                arg.to_string(),
+            ))
+        })),
+    );
+
+    handlers.insert(
+        "RNFR".to_string(),
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(crate::core_ftpcommand::rnfr::handle_rnfr_command(
+                writer,
+                config,
+                session,
+                arg.to_string(),
+            ))
+        })),
+    );
+    handlers.insert(
+        "RNTO".to_string(),
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(crate::core_ftpcommand::rnto::handle_rnto_command(
+                writer,
+                config,
+                session,
+                arg.to_string(),
+            ))
+        })),
+    );
+
     handlers
 }
