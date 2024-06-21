@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
+use log::{info, warn, error};
 
 /// Handles the RNFR (Rename From) FTP command.
 ///
@@ -32,6 +33,7 @@ pub async fn handle_rnfr_command(
 ) -> Result<(), std::io::Error> {
     // Sanitize the input argument to prevent directory traversal attacks.
     let sanitized_arg = sanitize_input(&arg);
+    info!("Received RNFR command with argument: {}", sanitized_arg);
 
     // Construct the path of the file or directory to be renamed.
     let path = {
@@ -39,6 +41,7 @@ pub async fn handle_rnfr_command(
         let session = session.lock().await;
         construct_path(&config, &session.current_dir, &sanitized_arg)
     };
+    info!("Constructed path: {:?}", path);
 
     // Canonicalize the chroot directory to resolve any symbolic links or relative paths.
     let chroot_dir = PathBuf::from(&config.server.chroot_dir).canonicalize()?;
@@ -47,12 +50,14 @@ pub async fn handle_rnfr_command(
 
     // Check if the resolved path is within the chroot directory.
     if !resolved_path.starts_with(&chroot_dir) {
+        error!("Path is outside of the allowed area: {:?}", resolved_path);
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());
     }
 
     // Check if the file or directory exists.
     if !resolved_path.exists() {
+        warn!("File or directory does not exist: {:?}", resolved_path);
         send_response(&writer, b"550 File or directory does not exist.\r\n").await?;
         return Ok(());
     }
@@ -60,11 +65,13 @@ pub async fn handle_rnfr_command(
     // Store the path in the session for use by the RNTO command.
     {
         let mut session = session.lock().await;
-        session.rename_from = Some(resolved_path);
+        session.rename_from = Some(resolved_path.clone());
     }
+    info!("Stored path for renaming: {:?}", resolved_path);
 
     // Send success response.
     send_response(&writer, b"350 Ready for RNTO.\r\n").await?;
+    info!("Sent RNFR success response.");
 
     Ok(())
 }

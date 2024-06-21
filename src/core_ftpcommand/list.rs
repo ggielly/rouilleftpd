@@ -6,6 +6,7 @@ use crate::Config;
 use crate::core_network::Session;
 use std::fs;
 use std::path::PathBuf;
+use log::{info, warn, error};
 
 pub async fn handle_list_command(
     writer: Arc<Mutex<TcpStream>>,
@@ -18,16 +19,16 @@ pub async fn handle_list_command(
     let min_homedir = config.server.min_homedir.trim_start_matches('/');
     let dir_path = PathBuf::from(&config.server.chroot_dir).join(min_homedir).join(current_dir.trim_start_matches('/'));
 
-    println!("chroot_dir: {:?}", config.server.chroot_dir);
-    println!("min_homedir: {:?}", config.server.min_homedir);
-    println!("Current dir: {:?}", current_dir);
-    println!("Constructed directory path: {:?}", dir_path);
+    info!("chroot_dir: {:?}", config.server.chroot_dir);
+    info!("min_homedir: {:?}", config.server.min_homedir);
+    info!("Current dir: {:?}", current_dir);
+    info!("Constructed directory path: {:?}", dir_path);
 
     let entries = match fs::read_dir(&dir_path) {
         Ok(entries) => entries,
         Err(e) => {
-            println!("Error reading directory: {:?}", e);
-            println!("Real path attempted: {:?}", dir_path.canonicalize());
+            error!("Error reading directory: {:?}", e);
+            error!("Real path attempted: {:?}", dir_path.canonicalize());
             let mut writer = writer.lock().await;
             writer.write_all(b"550 Failed to list directory.\r\n").await?;
             return Ok(());
@@ -40,7 +41,10 @@ pub async fn handle_list_command(
         if let Ok(entry) = entry {
             let metadata = match entry.metadata() {
                 Ok(metadata) => metadata,
-                Err(_) => continue,
+                Err(e) => {
+                    warn!("Failed to get metadata for entry: {:?}, error: {:?}", entry.path(), e);
+                    continue;
+                },
             };
 
             let file_type = if metadata.is_dir() { "d" } else { "-" };
@@ -57,6 +61,8 @@ pub async fn handle_list_command(
             );
 
             listing.push_str(&file_entry);
+        } else {
+            warn!("Failed to read directory entry.");
         }
     }
 
@@ -64,5 +70,6 @@ pub async fn handle_list_command(
     writer.write_all(b"150 Here comes the directory listing.\r\n").await?;
     writer.write_all(listing.as_bytes()).await?;
     writer.write_all(b"226 Directory send OK.\r\n").await?;
+    info!("Directory listing sent successfully.");
     Ok(())
 }

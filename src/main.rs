@@ -12,9 +12,11 @@ use serde::Deserialize;
 use std::fs;
 use structopt::StructOpt;
 use tokio;
+use env_logger::{Builder, Env};
+use log::LevelFilter;
+use std::io::Write;
 
 #[derive(Debug, Deserialize)]
-// Configuration file
 struct ServerConfig {
     listen_port: u16,
     pasv_address: String,
@@ -28,16 +30,18 @@ struct Config {
     server: ServerConfig,
 }
 
-
-
-
 #[tokio::main]
 async fn main() -> Result<()> {
     // Parse CLI arguments
     let args = Cli::from_args();
 
-    // Initialize the logger
-    env_logger::init();
+    // Initialize the logger with a custom format
+    Builder::from_env(Env::default().default_filter_or("info"))
+        .format(|buf, record| {
+            let timestamp = buf.timestamp();
+            writeln!(buf, "[{}] [{}] {}", timestamp, record.level(), record.args())
+        })
+        .init();
 
     // Determine the default config path based on the OS
     let default_config_path = if cfg!(target_os = "windows") {

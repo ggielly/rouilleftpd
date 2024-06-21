@@ -3,13 +3,33 @@ use crate::ipc::Ipc;
 use crate::Config;
 use anyhow::Result;
 use std::sync::Arc;
+use log::{info, error};
 
+/// Runs the FTP server with the provided configuration and IPC key.
+///
+/// This function initializes the server configuration and starts the FTP server,
+/// logging significant steps and potential issues.
+///
+/// # Arguments
+///
+/// * `config` - The server configuration.
+/// * `ipc` - The IPC instance for inter-process communication.
+///
+/// # Returns
+///
+/// Result<(), anyhow::Error> indicating the success or failure of the operation.
 pub async fn run(config: Config, ipc: Ipc) -> Result<()> {
-    println!("Starting server with config: {:?}", config);
-    println!("IPC Key: {:?}", ipc.ipc_key);
+    info!("Starting server with config: {:?}", config);
+    info!("IPC Key: {:?}", ipc.ipc_key);
 
     // Start the FTP server
-    network::start_server(config.server.listen_port, Arc::new(config), ipc).await?;
+    match network::start_server(config.server.listen_port, Arc::new(config), ipc).await {
+        Ok(_) => info!("Server started successfully."),
+        Err(e) => {
+            error!("Failed to start server: {}", e);
+            return Err(e);
+        }
+    }
 
     Ok(())
 }

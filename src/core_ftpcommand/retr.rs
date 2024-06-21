@@ -8,6 +8,7 @@ use tokio::fs::File;
 use crate::core_network::Session;
 use crate::core_ftpcommand::utils::{sanitize_input, construct_path, send_response};
 use anyhow::Result;
+use log::{info, warn, error};
 
 /// Handles the RETR (Retrieve) FTP command.
 ///
@@ -31,51 +32,58 @@ pub async fn handle_retr_command(
     session: Arc<Mutex<Session>>,
     arg: String,
 ) -> Result<(), std::io::Error> {
-    // Sanitize the input argument to prevent directory traversal attacks.
-    let sanitized_arg = sanitize_input(&arg);
+    if arg.trim().is_empty() {
+        warn!("RETR command received with no arguments");
+        send_response(&writer, b"501 Syntax error in parameters or arguments.\r\n").await?;
+        return Ok(());
+    }
 
-    // Construct the path of the file to retrieve.
+    let sanitized_arg = sanitize_input(&arg);
     let file_path = {
-        // Lock the session to get the current directory.
         let session = session.lock().await;
         construct_path(&config, &session.current_dir, &sanitized_arg)
     };
 
-    // Canonicalize the chroot directory to resolve any symbolic links or relative paths.
     let chroot_dir = PathBuf::from(&config.server.chroot_dir).canonicalize()?;
-    // Canonicalize the file path to ensure it's within the chroot directory.
     let resolved_path = file_path.canonicalize().unwrap_or_else(|_| file_path.clone());
 
-    // Check if the resolved path is within the chroot directory.
     if !resolved_path.starts_with(&chroot_dir) {
+        error!("Path is outside of the allowed area: {:?}", resolved_path);
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());
     }
 
-    // Attempt to open the file.
     let mut file = match File::open(&resolved_path).await {
         Ok(f) => f,
-        Err(_) => {
+        Err(e) => {
+            error!("File not found or could not be opened: {:?}, error: {}", resolved_path, e);
             send_response(&writer, b"550 File not found.\r\n").await?;
             return Ok(());
         }
     };
 
-    // Send success response indicating that the file transfer is starting.
     send_response(&writer, b"150 Opening data connection.\r\n").await?;
+    info!("Sending file: {:?}", resolved_path);
 
-    // Read the file contents and send them to the client.
     let mut buffer = vec![0; 8192];
     loop {
-        let bytes_read = file.read(&mut buffer).await?;
-        if bytes_read == 0 {
-            break;
+        let bytes_read = match file.read(&mut buffer).await {
+            Ok(0) => break,
+            Ok(n) => n,
+            Err(e) => {
+                error!("Error reading file: {}", e);
+                send_response(&writer, b"550 Error reading file.\r\n").await?;
+                return Ok(());
+            }
+        };
+        if let Err(e) = writer.lock().await.write_all(&buffer[..bytes_read]).await {
+            error!("Error sending file to client: {}", e);
+            return Ok(());
         }
-        writer.lock().await.write_all(&buffer[..bytes_read]).await?;
     }
 
-    // Send transfer complete response.
     send_response(&writer, b"226 Transfer complete.\r\n").await?;
+    info!("File transfer completed successfully: {:?}", resolved_path);
 
     Ok(())
 }

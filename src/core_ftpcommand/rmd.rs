@@ -7,6 +7,7 @@ use tokio::fs;
 use crate::core_network::Session;
 use crate::core_ftpcommand::utils::{sanitize_input, construct_path, send_response};
 use anyhow::Result;
+use log::{info, warn, error};
 
 /// Handles the RMD (Remove Directory) FTP command.
 ///
@@ -32,6 +33,7 @@ pub async fn handle_rmd_command(
 ) -> Result<(), std::io::Error> {
     // Sanitize the input argument to prevent directory traversal attacks.
     let sanitized_arg = sanitize_input(&arg);
+    info!("Received RMD command with argument: {}", sanitized_arg);
 
     // Construct the directory path within the user's current directory.
     let dir_path = {
@@ -39,6 +41,7 @@ pub async fn handle_rmd_command(
         let session = session.lock().await;
         construct_path(&config, &session.current_dir, &sanitized_arg)
     };
+    info!("Constructed directory path: {:?}", dir_path);
 
     // Canonicalize the chroot directory to resolve any symbolic links or relative paths.
     let chroot_dir = PathBuf::from(&config.server.chroot_dir).canonicalize()?;
@@ -47,12 +50,14 @@ pub async fn handle_rmd_command(
 
     // Check if the resolved path is within the chroot directory.
     if !resolved_path.starts_with(&chroot_dir) {
+        error!("Path is outside of the allowed area: {:?}", resolved_path);
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());
     }
 
     // Check if the directory exists.
     if !resolved_path.exists() {
+        warn!("Directory does not exist: {:?}", resolved_path);
         send_response(&writer, b"550 Directory does not exist.\r\n").await?;
         return Ok(());
     }
@@ -61,10 +66,12 @@ pub async fn handle_rmd_command(
     match fs::remove_dir(&resolved_path).await {
         Ok(_) => {
             // Send success response if the directory was deleted successfully.
+            info!("Directory removed successfully: {:?}", resolved_path);
             send_response(&writer, format!("250 \"{}\" directory removed.\r\n", sanitized_arg).as_bytes()).await?;
         },
-        Err(_) => {
+        Err(e) => {
             // Send failure response if there was an error deleting the directory.
+            error!("Failed to remove directory: {:?}, error: {}", resolved_path, e);
             send_response(&writer, b"550 Failed to remove directory.\r\n").await?;
         }
     }
