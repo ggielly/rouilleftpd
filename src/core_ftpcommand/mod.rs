@@ -6,3 +6,4 @@ pub mod pwd;
 pub mod list;
 pub mod cwd;
 pub mod noop;
+pub mod mkd;

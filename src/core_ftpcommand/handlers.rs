@@ -96,5 +96,17 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
         })),
     );
 
+    handlers.insert(
+        "MKD".to_string(),
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(crate::core_ftpcommand::mkd::handle_mkd_command(
+                writer,
+                config,
+                session,
+                arg.to_string(),
+            ))
+        })),
+    );
+    
     handlers
 }
