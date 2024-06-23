@@ -1,4 +1,3 @@
-use crate::core_ftpcommand::site::helper::{respond_with_error, respond_with_success};
 use crate::{session::Session, Config};
 use log::{info, warn};
 use std::{
@@ -8,6 +7,8 @@ use std::{
     sync::Arc,
 };
 use tokio::{io::AsyncWriteExt, net::TcpStream, sync::Mutex};
+
+use crate::core_ftpcommand::site::helper::{respond_with_error, respond_with_success, is_valid_ident_ip};
 
 // Constants for input validation
 const MIN_ADDIP_ARGS: usize = 2;
@@ -72,34 +73,7 @@ pub async fn handle_addip_command(
     Ok(())
 }
 
-fn is_valid_ident_ip(ident_ip: &str) -> bool {
-    let parts: Vec<&str> = ident_ip.split('@').collect();
-    if parts.len() != 2 {
-        return false;
-    }
-    let ident = parts[0];
-    let ip_or_hostname = parts[1];
 
-    if ident.is_empty() || !is_valid_ip_or_hostname(ip_or_hostname) {
-        return false;
-    }
-    true
-}
-
-fn is_valid_ip_or_hostname(ip: &str) -> bool {
-    if ip.len() > 128 {
-        return false;
-    }
-
-    // Check if it's a valid IPv4 address
-    if ip.parse::<std::net::Ipv4Addr>().is_ok() {
-        return true;
-    }
-
-    // Check if it's a valid FQDN
-    let re = regex::Regex::new(r"^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$").unwrap();
-    re.is_match(ip)
-}
 
 fn add_idents_ips_to_user_file(
     user_file_path: &Path,

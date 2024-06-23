@@ -1,16 +1,20 @@
-use crate::constants::{IP_HOSTNAME_MAX_LENGTH, USERNAME_REGEX};
-use crate::core_ftpcommand::site::helper::{respond_with_error, respond_with_success};
 use crate::{session::Session, Config};
 use log::{error, info, warn};
 use std::{
     fs::{self, OpenOptions},
     io::Write,
-    net::Ipv4Addr,
     path::{Path, PathBuf},
     sync::Arc,
 };
 use tokio::{io::AsyncWriteExt, net::TcpStream, sync::Mutex};
-use url::Url;
+
+use crate::core_ftpcommand::site::helper::{
+    is_valid_ip_or_hostname, 
+    is_valid_password, 
+    is_valid_username, 
+    respond_with_error,
+    respond_with_success,
+};
 
 /// Handles the SITE ADDUSER command.
 ///
@@ -74,36 +78,6 @@ pub async fn handle_adduser_command(
     Ok(())
 }
 
-/// Validates the username according to the defined rules.
-///
-/// # Arguments
-///
-/// * `username` - The username to validate.
-///
-/// # Returns
-///
-/// Returns `true` if the username is valid, `false` otherwise.
-fn is_valid_username(username: &str) -> bool {
-    let re = regex::Regex::new(USERNAME_REGEX).unwrap();
-    if username == "rouilleftpd" {
-        return false;
-    }
-    re.is_match(username)
-}
-
-/// Performs a basic validation of the password.
-///
-/// # Arguments
-///
-/// * `password` - The password to validate.
-///
-/// # Returns
-///
-/// Returns `true` if the password is not empty, `false` otherwise.
-fn is_valid_password(password: &str) -> bool {
-    !password.is_empty() // You should implement more robust password checks
-}
-
 /// Creates a new user file based on a default template.
 ///
 /// # Arguments
@@ -148,28 +122,4 @@ fn create_user_file(
     file.write_all(user_data.as_bytes())?;
 
     Ok(())
-}
-
-/// Checks if a string is a valid IPv4 address or hostname.
-///
-/// # Arguments
-///
-/// * `ip` - The string to validate.
-/// * `max_length` - The maximum allowed length of the string.
-///
-/// # Returns
-///
-/// Returns `true` if the string is a valid IPv4 address or hostname, `false` otherwise.
-fn is_valid_ip_or_hostname(ip: &str) -> bool {
-    if ip.len() > IP_HOSTNAME_MAX_LENGTH {
-        return false;
-    }
-
-    // Check if it's a valid IPv4 address
-    if ip.parse::<Ipv4Addr>().is_ok() {
-        return true;
-    }
-
-    // Check if it's a valid hostname
-    Url::parse(&format!("http://{}", ip)).is_ok()
 }
