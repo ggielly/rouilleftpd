@@ -8,8 +8,8 @@ use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
 // Specific crated for PORT and PASV commands
-use crate::core_network::port;
 use crate::core_network::pasv;
+use crate::core_network::port;
 
 type BoxedHandler = Box<
     dyn Fn(
@@ -24,6 +24,18 @@ type BoxedHandler = Box<
 
 pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
     let mut handlers: HashMap<String, Arc<BoxedHandler>> = HashMap::new();
+
+    handlers.insert(
+        "TYPE".to_string(),
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(crate::core_ftpcommand::type_::handle_type_command(
+                writer,
+                config,
+                session,
+                arg.to_string(),
+            ))
+        })),
+    );
 
     handlers.insert(
         "USER".to_string(),
@@ -176,14 +188,17 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(async move {
                 // Create a data connection here
-                let data_stream = Arc::new(Mutex::new(TcpStream::connect("localhost:20").await.unwrap()));
+                let data_stream = Arc::new(Mutex::new(
+                    TcpStream::connect("localhost:20").await.unwrap(),
+                ));
                 crate::core_ftpcommand::stor::handle_stor_command(
                     writer,
                     data_stream,
                     config,
                     session,
                     arg.to_string(),
-                ).await
+                )
+                .await
             })
         })),
     );
@@ -211,7 +226,6 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
             ))
         })),
     );
-
 
     handlers
 }
