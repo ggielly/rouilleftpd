@@ -15,6 +15,7 @@ pub mod retr;
 pub mod rmd;
 pub mod rnfr;
 pub mod rnto;
+pub mod site;
 pub mod stor;
 pub mod syst;
 pub mod type_; // TYPE is a reserved word, so lets use _
