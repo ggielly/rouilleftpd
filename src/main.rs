@@ -17,6 +17,7 @@ use std::fs;
 use std::io::Write;
 use structopt::StructOpt;
 use tokio;
+pub mod constants;
 
 #[derive(Debug, Deserialize)]
 struct ServerConfig {

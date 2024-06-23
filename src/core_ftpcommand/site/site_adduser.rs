@@ -1,4 +1,6 @@
-use crate::{Config, session::Session};
+use crate::constants::{IP_HOSTNAME_MAX_LENGTH, USERNAME_REGEX};
+use crate::core_ftpcommand::site::helper::{respond_with_error, respond_with_success};
+use crate::{session::Session, Config};
 use log::{error, info, warn};
 use std::{
     fs::{self, OpenOptions},
@@ -7,18 +9,8 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tokio::{
-    io::AsyncWriteExt,
-    net::TcpStream,
-    sync::Mutex,
-};
+use tokio::{io::AsyncWriteExt, net::TcpStream, sync::Mutex};
 use url::Url;
-
-use crate::core_ftpcommand::site::helper::{respond_with_error, respond_with_success};
-
-// Constants for input validation
-const USERNAME_REGEX: &str = r"^[a-zA-Z0-9]{1,32}$";
-const IP_HOSTNAME_MAX_LENGTH: usize = 128;
 
 /// Handles the SITE ADDUSER command.
 ///
@@ -73,7 +65,7 @@ pub async fn handle_adduser_command(
         Ok(_) => {
             info!("User {} added successfully", username);
             respond_with_success(&writer, b"200 User added successfully.\r\n").await?;
-        },
+        }
         Err(e) => {
             error!("Failed to create user file: {}", e);
             respond_with_error(&writer, b"550 Failed to create user.\r\n").await?;
