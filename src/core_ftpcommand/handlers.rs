@@ -26,6 +26,16 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
     let mut handlers: HashMap<String, Arc<BoxedHandler>> = HashMap::new();
 
     handlers.insert(
+        "ALLO".to_string(),
+        Arc::new(Box::new(|writer, _config, _session, arg| {
+            Box::pin(crate::core_ftpcommand::allo::handle_allo_command(
+                writer,
+                arg,
+            ))
+        })),
+    );
+
+    handlers.insert(
         "SYST".to_string(),
         Arc::new(Box::new(|writer, _config, _session, _arg| {
             Box::pin(crate::core_ftpcommand::syst::handle_syst_command(writer))

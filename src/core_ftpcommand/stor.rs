@@ -3,7 +3,6 @@ use crate::helpers::{sanitize_input, send_response};
 use crate::Config;
 use anyhow::Result;
 use log::{error, info};
-use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;

@@ -1,4 +1,5 @@
 // Here's the list of the FTP commands implemented
+pub mod allo;
 pub mod cdup;
 pub mod cwd;
 pub mod dele;

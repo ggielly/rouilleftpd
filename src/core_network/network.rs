@@ -1,7 +1,6 @@
 use crate::core_ftpcommand::handlers::initialize_command_handlers;
 use crate::core_log::logger::log_message;
 use crate::core_network::Session;
-use crate::ipc::Ipc;
 use crate::Config;
 use anyhow::{Context, Result};
 use std::fs::File;

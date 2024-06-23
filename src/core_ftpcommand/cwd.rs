@@ -1,7 +1,7 @@
 use crate::core_network::Session;
 use crate::Config;
 use log::{error, info, warn};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Component, PathBuf};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;

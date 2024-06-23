@@ -1,9 +1,8 @@
-use crate::core_ftpcommand::utils::{construct_path, sanitize_input, send_response};
+use crate::core_ftpcommand::utils::{sanitize_input, send_response};
 use crate::core_network::Session;
 use crate::Config;
 use anyhow::Result;
 use log::{error, info, warn};
-use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;

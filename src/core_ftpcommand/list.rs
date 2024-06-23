@@ -5,7 +5,6 @@ use tokio::sync::Mutex;
 use crate::Config;
 use crate::core_network::Session;
 use std::fs;
-use std::path::PathBuf;
 use log::{info, warn, error};
 
 pub async fn handle_list_command(
