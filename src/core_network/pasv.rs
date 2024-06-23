@@ -3,8 +3,8 @@ use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::Config;
-use crate::core_network::Session;
-use log::{error};
+use crate::session::Session;
+use log::error;
 use tokio::io::AsyncWriteExt;
 use std::net::IpAddr;
 

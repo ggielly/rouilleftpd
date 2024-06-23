@@ -1,4 +1,4 @@
-use crate::core_network::Session;
+use crate::session::Session;
 use crate::helpers::{sanitize_input, send_response};
 use crate::Config;
 use anyhow::Result;

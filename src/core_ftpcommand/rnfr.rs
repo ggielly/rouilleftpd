@@ -1,5 +1,5 @@
 use crate::core_ftpcommand::utils::{sanitize_input, send_response};
-use crate::core_network::Session;
+use crate::session::Session;
 use crate::Config;
 use anyhow::Result;
 use log::{error, info, warn};

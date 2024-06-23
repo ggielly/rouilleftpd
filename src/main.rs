@@ -5,6 +5,7 @@ mod core_network;
 mod helpers;
 mod ipc;
 mod server;
+mod session;
 
 use crate::core_cli::Cli;
 use anyhow::{Context, Result};

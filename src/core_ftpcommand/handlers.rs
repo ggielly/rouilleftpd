@@ -1,4 +1,4 @@
-use crate::core_network::Session;
+use crate::session::Session;
 use crate::Config;
 use std::collections::HashMap;
 use std::future::Future;
@@ -26,11 +26,19 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
     let mut handlers: HashMap<String, Arc<BoxedHandler>> = HashMap::new();
 
     handlers.insert(
+        "FEAT".to_string(),
+        Arc::new(Box::new(|writer, _config, _session, arg| {
+            Box::pin(crate::core_ftpcommand::feat::handle_feat_command(
+                writer, arg,
+            ))
+        })),
+    );
+
+    handlers.insert(
         "ALLO".to_string(),
         Arc::new(Box::new(|writer, _config, _session, arg| {
             Box::pin(crate::core_ftpcommand::allo::handle_allo_command(
-                writer,
-                arg,
+                writer, arg,
             ))
         })),
     );
@@ -68,24 +76,22 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
 
     handlers.insert(
         "USER".to_string(),
-        Arc::new(Box::new(|writer, config, _session, arg| {
+        Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::user::handle_user_command(
-                writer,
-                config,
-                arg.to_string(),
+                writer, config, session, arg,
             ))
         })),
     );
+
     handlers.insert(
         "PASS".to_string(),
-        Arc::new(Box::new(|writer, config, _session, arg| {
+        Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::pass::handle_pass_command(
-                writer,
-                config,
-                arg.to_string(),
+                writer, config, session, arg,
             ))
         })),
     );
+
     handlers.insert(
         "QUIT".to_string(),
         Arc::new(Box::new(|writer, config, _session, arg| {
@@ -96,6 +102,7 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
             ))
         })),
     );
+
     handlers.insert(
         "PWD".to_string(),
         Arc::new(Box::new(|writer, config, session, arg| {
@@ -107,6 +114,7 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
             ))
         })),
     );
+
     handlers.insert(
         "LIST".to_string(),
         Arc::new(Box::new(|writer, config, session, arg| {
@@ -118,6 +126,7 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
             ))
         })),
     );
+
     handlers.insert(
         "CWD".to_string(),
         Arc::new(Box::new(|writer, config, session, arg| {
@@ -188,6 +197,7 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
             ))
         })),
     );
+    
     handlers.insert(
         "RNTO".to_string(),
         Arc::new(Box::new(|writer, config, session, arg| {

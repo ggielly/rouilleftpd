@@ -2,11 +2,11 @@ use crate::core_network::network;
 use crate::ipc::Ipc;
 use crate::Config;
 use anyhow::Result;
+use log::{error, info};
 use std::sync::Arc;
-use log::{info, error};
 
+use crate::session::Session;
 use std::path::PathBuf;
-use crate::core_network::Session;
 
 /// Runs the FTP server with the provided configuration and IPC key.
 ///
@@ -36,7 +36,6 @@ pub async fn run(config: Config, ipc: Ipc) -> Result<()> {
 
     Ok(())
 }
-
 
 pub fn initialize_session(config: &Config) -> Session {
     let base_path = PathBuf::from(&config.server.chroot_dir)

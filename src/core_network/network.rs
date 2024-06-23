@@ -1,6 +1,7 @@
 use crate::core_ftpcommand::handlers::initialize_command_handlers;
 use crate::core_log::logger::log_message;
-use crate::core_network::Session;
+use std::path::PathBuf;
+use crate::session::Session;
 use crate::Config;
 use anyhow::{Context, Result};
 use std::fs::File;
@@ -9,8 +10,6 @@ use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
-
-use crate::core_network::PathBuf;
 
 pub async fn start_server(
     listen_port: u16,

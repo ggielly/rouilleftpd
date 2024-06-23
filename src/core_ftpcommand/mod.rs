@@ -3,6 +3,7 @@ pub mod allo;
 pub mod cdup;
 pub mod cwd;
 pub mod dele;
+pub mod feat;
 pub mod handlers;
 pub mod list;
 pub mod mkd;

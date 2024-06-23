@@ -1,5 +1,6 @@
+use crate::session::Session;
 use crate::Config;
-use log::{error, info};
+use log::{error, info, warn};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -8,7 +9,6 @@ use tokio::sync::Mutex;
 /// Handles the PASS (Password) FTP command.
 ///
 /// This function authenticates the user with the provided password.
-/// In this simplified implementation, it always succeeds and logs the user in.
 ///
 /// # Arguments
 ///
@@ -22,12 +22,32 @@ use tokio::sync::Mutex;
 pub async fn handle_pass_command(
     writer: Arc<Mutex<TcpStream>>,
     _config: Arc<Config>,
-    _password: String,
+    session: Arc<Mutex<Session>>,
+    password: String,
 ) -> Result<(), std::io::Error> {
     info!("Received PASS command. Authenticating user.");
 
+    let username = {
+        let session = session.lock().await;
+        session.username.clone()
+    };
+
+    let response: &[u8] = if let Some(username) = username {
+        if username.to_lowercase() == "anonymous" {
+            info!("Anonymous login with password: {}", password);
+            b"230 Anonymous user logged in, proceed.\r\n"
+        } else {
+            // Here we can add real user/pass authentication later
+            info!("User {} logged in with password: {}", username, password);
+            b"230 User logged in, proceed.\r\n"
+        }
+    } else {
+        warn!("PASS command received without a preceding USER command.");
+        b"503 Bad sequence of commands.\r\n"
+    };
+
     let mut writer = writer.lock().await;
-    if let Err(e) = writer.write_all(b"230 User logged in, proceed.\r\n").await {
+    if let Err(e) = writer.write_all(response).await {
         error!("Failed to send PASS response: {}", e);
         return Err(e);
     }

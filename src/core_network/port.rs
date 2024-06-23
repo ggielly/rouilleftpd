@@ -1,12 +1,12 @@
-use std::net::SocketAddr;
-use tokio::net::TcpStream;
-use anyhow::Result;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use log::{info, error};
-use tokio::io::AsyncWriteExt;
+use crate::session::Session;
 use crate::Config;
-use crate::core_network::Session;
+use anyhow::Result;
+use log::{error, info};
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::io::AsyncWriteExt;
+use tokio::net::TcpStream;
+use tokio::sync::Mutex;
 
 /// Sets up an active mode (PORT) connection.
 /// Parses the IP address and port, validates them, and attempts to connect.
@@ -43,7 +43,9 @@ pub async fn handle_port_command(
     if parts.len() != 6 {
         // Invalid argument format
         let mut writer = writer.lock().await;
-        writer.write_all(b"501 Syntax error in parameters or arguments.\r\n").await?;
+        writer
+            .write_all(b"501 Syntax error in parameters or arguments.\r\n")
+            .await?;
         return Ok(());
     }
 
@@ -55,7 +57,10 @@ pub async fn handle_port_command(
         return Ok(());
     }
     let ip_parts = ip_parts.unwrap();
-    let ip = format!("{}.{}.{}.{}", ip_parts[0], ip_parts[1], ip_parts[2], ip_parts[3]);
+    let ip = format!(
+        "{}.{}.{}.{}",
+        ip_parts[0], ip_parts[1], ip_parts[2], ip_parts[3]
+    );
 
     // Validate and construct the port number
     let port_parts: Result<Vec<u8>, _> = parts[4..6].iter().map(|x| x.parse::<u8>()).collect();
@@ -77,11 +82,13 @@ pub async fn handle_port_command(
             session.data_stream = Some(Arc::new(Mutex::new(data_stream)));
             let mut writer = writer.lock().await;
             writer.write_all(b"200 Command okay.\r\n").await?;
-        },
+        }
         Err(e) => {
             error!("Failed to connect to client {}: {}: {}", ip, port, e);
             let mut writer = writer.lock().await;
-            writer.write_all(b"425 Can't open data connection.\r\n").await?;
+            writer
+                .write_all(b"425 Can't open data connection.\r\n")
+                .await?;
         }
     }
 

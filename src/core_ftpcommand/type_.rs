@@ -1,4 +1,4 @@
-use crate::core_network::Session;
+use crate::session::Session;
 use crate::Config;
 use anyhow::Result;
 use std::sync::Arc;
