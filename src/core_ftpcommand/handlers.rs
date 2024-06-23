@@ -25,15 +25,16 @@ type BoxedHandler = Box<
 pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
     let mut handlers: HashMap<String, Arc<BoxedHandler>> = HashMap::new();
 
-    // SITE command handler (corrected)
-    handlers.insert(
-        "SITE".to_string(),
-        Arc::new(Box::new(|writer, config, session, arg| {
-            Box::pin(crate::core_ftpcommand::site::handle_site_command(
-                writer, config, session, arg, // Pass the original 'arg' string
-            ))
-        })),
-    );
+// SITE command handler
+handlers.insert(
+    "SITE".to_string(),
+    Arc::new(Box::new(|writer, config, session, arg| {
+        // Pass the original 'arg' string without splitting
+        Box::pin(crate::core_ftpcommand::site::handle_site_command(
+            writer, config, session, arg, 
+        ))
+    })),
+);
 
 
     handlers.insert(

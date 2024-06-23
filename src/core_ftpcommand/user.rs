@@ -1,6 +1,6 @@
 use crate::Config;
 use crate::session::Session;
-use log::{error, info, warn};
+use log::{error, info};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;

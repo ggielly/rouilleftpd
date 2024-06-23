@@ -84,19 +84,22 @@ pub async fn handle_connection(
         let command = buffer.trim();
         log_message(&format!("Received command: {}", command));
 
-        let parts: Vec<&str> = command.split_whitespace().collect();
-        let cmd = parts
-            .get(0)
-            .map(|s| s.to_ascii_uppercase())
-            .unwrap_or_default();
-        let arg = parts.get(1).map(|s| s.to_string()).unwrap_or_default();
+        let parts: Vec<String> = command.split_whitespace().map(String::from).collect();
+
+        if parts.is_empty() {
+            log_message("Empty command received, ignoring.");
+            continue;
+        }
+
+        let cmd = parts[0].to_ascii_uppercase();
+        let args = parts[1..].to_vec();
 
         if let Some(handler) = handlers.get(&cmd) {
             if let Err(e) = handler(
                 Arc::clone(&socket),
                 Arc::clone(&config),
                 Arc::clone(&session),
-                arg,
+                args.join(" "),
             )
             .await
             {
