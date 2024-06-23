@@ -33,7 +33,6 @@ pub async fn start_server(listen_port: u16, config: Arc<Config>, ipc: Ipc) -> Re
 }
 
 pub async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: crate::ipc::Ipc) -> Result<()> {
-    // Load and send the banner text
     let banner_path = if cfg!(target_os = "windows") {
         "ftp-data/text/banner.txt"
     } else {
@@ -46,6 +45,7 @@ pub async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: cra
     {
         let mut socket = socket.lock().await;
         socket.write_all(format!("220-{}\r\n", banner_text).as_bytes()).await?;
+        socket.write_all(b"220 This is a banner.\r\n").await?;
     }
 
     let handlers = initialize_command_handlers();
@@ -61,6 +61,7 @@ pub async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: cra
             drop(locked_socket);
 
             if n == 0 {
+                log_message("Client disconnected unexpectedly");
                 break;
             }
         }
@@ -73,7 +74,10 @@ pub async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: cra
         let arg = parts.get(1).map(|s| s.to_string()).unwrap_or_default();
 
         if let Some(handler) = handlers.get(&cmd) {
-            handler(Arc::clone(&socket), Arc::clone(&config), Arc::clone(&session), arg).await?;
+            if let Err(e) = handler(Arc::clone(&socket), Arc::clone(&config), Arc::clone(&session), arg).await {
+                log_message(&format!("Error handling command {}: {:?}", cmd, e));
+                break;
+            }
         } else {
             let mut socket = socket.lock().await;
             socket.write_all(b"502 Command not implemented.\r\n").await?;
@@ -81,6 +85,7 @@ pub async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: cra
     }
     Ok(())
 }
+
 
 fn load_banner(path: &str) -> Result<String> {
     let mut file = File::open(path)
