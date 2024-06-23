@@ -1,11 +1,13 @@
-use crate::core_ftpcommand::site::helper::respond_with_error;
-use crate::core_ftpcommand::site::site_addip::handle_addip_command;
+use std::sync::Arc; // for Arc
+use tokio::sync::Mutex; // for Mutex
+use tokio::net::TcpStream; // for TcpStream
+use crate::{Config, session::Session}; // for Config and Session
+use log::{info, warn}; // for logging
 use crate::core_ftpcommand::site::site_adduser::handle_adduser_command;
-use crate::{session::Session, Config};
-use log::{info, warn};
-use std::sync::Arc;
-use tokio::net::TcpStream;
-use tokio::sync::Mutex;
+use crate::core_ftpcommand::site::site_addip::handle_addip_command;
+use crate::core_ftpcommand::site::site_delip::handle_delip_command;
+use crate::core_ftpcommand::site::helper::respond_with_error;
+
 
 pub async fn handle_site_command(
     writer: Arc<Mutex<TcpStream>>,
@@ -32,6 +34,10 @@ pub async fn handle_site_command(
         "ADDIP" => {
             info!("Handling SITE ADDIP command with args: {:?}", sub_args);
             handle_addip_command(writer, config, session, sub_args).await
+        }
+        "DELIP" => {
+            info!("Handling SITE DELIP command with args: {:?}", sub_args);
+            handle_delip_command(writer, config, session, sub_args).await
         }
         _ => {
             warn!("Unknown SITE subcommand: {}", subcommand);

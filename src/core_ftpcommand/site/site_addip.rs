@@ -1,3 +1,4 @@
+use crate::constants::{MIN_ADDIP_ARGS, MAX_ADDIP_IPS};
 use crate::{session::Session, Config};
 use log::{info, warn};
 use std::{
@@ -9,10 +10,6 @@ use std::{
 use tokio::{io::AsyncWriteExt, net::TcpStream, sync::Mutex};
 
 use crate::core_ftpcommand::site::helper::{respond_with_error, respond_with_success, is_valid_ident_ip};
-
-// Constants for input validation
-const MIN_ADDIP_ARGS: usize = 2;
-const MAX_ADDIP_IPS: usize = 10;
 
 pub async fn handle_addip_command(
     writer: Arc<Mutex<TcpStream>>,
