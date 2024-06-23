@@ -1,0 +1,34 @@
+#######
+# Rouilleftpd default userfile (default.user)
+# Version 1.0
+#######
+## GENERAL: WKLY_ALLOTMENT, IDLE_TIME, MAX_DLSPEED, MAX_ULSPEED 
+GENERAL 0,0 -1 0 0
+## max logins per account, max logins from the same IP, max simult. downloads, max simult. uploads
+LOGINS 2 0 -1 -1
+## Default FLAGS for the user
+FLAGS 3 
+## 
+TAGLINE toto
+## DIR is the start-up dir for this user
+DIR /
+## Xfer information: FILES, KILOBYTES, SECONDS
+RATIO 3
+CREDITS 15000
+ALLUP 0 0 0
+ALLDN 0 0 0
+WKUP 0 0 0
+WKDN 0 0 0
+DAYUP 0 0 0
+DAYDN 0 0 0
+MONTHUP 0 0 0
+MONTHDN 0 0 0
+## TIME: Login Times, Last_On, Time Limit, Time on Today
+TIME 0 0 0 0
+## NUKE: Last Nuked, Times Nuked, Total MBytes Nuked
+NUKE 0 0 0
+USER toto
+PASSWORD titi
+IP lol@192.168.1.1
+IP 191.23.23.3
+IP lol@123.23.21.2
