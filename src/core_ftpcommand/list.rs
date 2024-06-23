@@ -8,6 +8,7 @@ use std::fs;
 use std::path::PathBuf;
 use log::{info, warn, error};
 
+
 pub async fn handle_list_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
@@ -17,18 +18,41 @@ pub async fn handle_list_command(
     let session = session.lock().await;
     let current_dir = &session.current_dir;
     let min_homedir = config.server.min_homedir.trim_start_matches('/');
-    let dir_path = PathBuf::from(&config.server.chroot_dir).join(min_homedir).join(current_dir.trim_start_matches('/'));
+    let dir_path = PathBuf::from(&config.server.chroot_dir)
+        .join(min_homedir)
+        .join(current_dir.trim_start_matches('/'));
 
     info!("chroot_dir: {:?}", config.server.chroot_dir);
     info!("min_homedir: {:?}", config.server.min_homedir);
     info!("Current dir: {:?}", current_dir);
     info!("Constructed directory path: {:?}", dir_path);
 
-    let entries = match fs::read_dir(&dir_path) {
+    let canonical_dir_path = match dir_path.canonicalize() {
+        Ok(path) => path,
+        Err(e) => {
+            error!("Failed to canonicalize the directory path: {:?}", e);
+            let mut writer = writer.lock().await;
+            writer.write_all(b"550 Failed to list directory.\r\n").await?;
+            return Ok(());
+        }
+    };
+
+    let chroot_dir = PathBuf::from(&config.server.chroot_dir)
+        .canonicalize()
+        .unwrap();
+
+    if !canonical_dir_path.starts_with(&chroot_dir) {
+        warn!("Directory listing attempt outside chroot: {:?}", canonical_dir_path);
+        let mut writer = writer.lock().await;
+        writer.write_all(b"550 Failed to list directory.\r\n").await?;
+        return Ok(());
+    }
+
+    let entries = match fs::read_dir(&canonical_dir_path) {
         Ok(entries) => entries,
         Err(e) => {
             error!("Error reading directory: {:?}", e);
-            error!("Real path attempted: {:?}", dir_path.canonicalize());
+            error!("Real path attempted: {:?}", canonical_dir_path);
             let mut writer = writer.lock().await;
             writer.write_all(b"550 Failed to list directory.\r\n").await?;
             return Ok(());

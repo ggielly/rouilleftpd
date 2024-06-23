@@ -58,7 +58,7 @@ pub async fn handle_cwd_command(
         .unwrap();
 
     if canonical_dir_path.starts_with(&chroot_dir) && canonical_dir_path.is_dir() {
-        session.current_dir = new_dir.to_str().unwrap().to_string();
+        session.current_dir = canonical_dir_path.strip_prefix(&chroot_dir).unwrap().to_str().unwrap().to_string();
         info!("Directory successfully changed to: {}", session.current_dir);
         let mut writer = writer.lock().await;
         writer
