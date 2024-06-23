@@ -1,16 +1,15 @@
-use tokio::net::{TcpListener, TcpStream};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use anyhow::{Result, Context};
+use crate::core_ftpcommand::handlers::initialize_command_handlers;
+use crate::core_log::logger::log_message;
+use crate::core_network::Session;
+use crate::ipc::Ipc;
+use crate::Config;
+use anyhow::{Context, Result};
 use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;
-use tokio::sync::Mutex;
-use crate::Config;
-use crate::ipc::Ipc;
-use crate::core_log::logger::log_message;
-use crate::core_ftpcommand::handlers::initialize_command_handlers;
-use crate::core_network::Session;  // Importing Session from core_network
-
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::Mutex; // Importing Session from core_network
 
 pub async fn start_server(listen_port: u16, config: Arc<Config>, ipc: Ipc) -> Result<()> {
     let listener = TcpListener::bind(format!("0.0.0.0:{}", listen_port)).await?;
@@ -32,7 +31,11 @@ pub async fn start_server(listen_port: u16, config: Arc<Config>, ipc: Ipc) -> Re
     }
 }
 
-pub async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: crate::ipc::Ipc) -> Result<()> {
+pub async fn handle_connection(
+    socket: TcpStream,
+    config: Arc<Config>,
+    _ipc: crate::ipc::Ipc,
+) -> Result<()> {
     let banner_path = if cfg!(target_os = "windows") {
         "ftp-data/text/banner.txt"
     } else {
@@ -44,7 +47,9 @@ pub async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: cra
     let socket = Arc::new(Mutex::new(socket));
     {
         let mut socket = socket.lock().await;
-        socket.write_all(format!("220-{}\r\n", banner_text).as_bytes()).await?;
+        socket
+            .write_all(format!("220-{}\r\n", banner_text).as_bytes())
+            .await?;
         socket.write_all(b"220 This is a banner.\r\n").await?;
     }
 
@@ -70,26 +75,37 @@ pub async fn handle_connection(socket: TcpStream, config: Arc<Config>, _ipc: cra
         log_message(&format!("Received command: {}", command));
 
         let parts: Vec<&str> = command.split_whitespace().collect();
-        let cmd = parts.get(0).map(|s| s.to_ascii_uppercase()).unwrap_or_default();
+        let cmd = parts
+            .get(0)
+            .map(|s| s.to_ascii_uppercase())
+            .unwrap_or_default();
         let arg = parts.get(1).map(|s| s.to_string()).unwrap_or_default();
 
         if let Some(handler) = handlers.get(&cmd) {
-            if let Err(e) = handler(Arc::clone(&socket), Arc::clone(&config), Arc::clone(&session), arg).await {
+            if let Err(e) = handler(
+                Arc::clone(&socket),
+                Arc::clone(&config),
+                Arc::clone(&session),
+                arg,
+            )
+            .await
+            {
                 log_message(&format!("Error handling command {}: {:?}", cmd, e));
                 break;
             }
         } else {
             let mut socket = socket.lock().await;
-            socket.write_all(b"502 Command not implemented.\r\n").await?;
+            socket
+                .write_all(b"502 Command not implemented.\r\n")
+                .await?;
         }
     }
     Ok(())
 }
 
-
 fn load_banner(path: &str) -> Result<String> {
-    let mut file = File::open(path)
-        .with_context(|| format!("Failed to open banner file: {}", path))?;
+    let mut file =
+        File::open(path).with_context(|| format!("Failed to open banner file: {}", path))?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .with_context(|| format!("Failed to read banner file: {}", path))?;

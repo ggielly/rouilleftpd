@@ -7,22 +7,21 @@ mod server;
 
 use crate::core_cli::Cli;
 use anyhow::{Context, Result};
+use env_logger::{Builder, Env};
 use ipc::Ipc;
 use serde::Deserialize;
 use std::fs;
+use std::io::Write;
 use structopt::StructOpt;
 use tokio;
-use env_logger::{Builder, Env};
-use log::LevelFilter;
-use std::io::Write;
 
 #[derive(Debug, Deserialize)]
 struct ServerConfig {
     listen_port: u16,
-    pasv_address: String,
     ipc_key: String,
     chroot_dir: String,
     min_homedir: String,
+    pasv_address: String, // Add the public IP address for PASV mode
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,7 +38,13 @@ async fn main() -> Result<()> {
     Builder::from_env(Env::default().default_filter_or("info"))
         .format(|buf, record| {
             let timestamp = buf.timestamp();
-            writeln!(buf, "[{}] [{}] {}", timestamp, record.level(), record.args())
+            writeln!(
+                buf,
+                "[{}] [{}] {}",
+                timestamp,
+                record.level(),
+                record.args()
+            )
         })
         .init();
 
