@@ -5,6 +5,9 @@ use anyhow::Result;
 use std::sync::Arc;
 use log::{info, error};
 
+use std::path::PathBuf;
+use crate::core_network::Session;
+
 /// Runs the FTP server with the provided configuration and IPC key.
 ///
 /// This function initializes the server configuration and starts the FTP server,
@@ -32,4 +35,14 @@ pub async fn run(config: Config, ipc: Ipc) -> Result<()> {
     }
 
     Ok(())
+}
+
+
+pub fn initialize_session(config: &Config) -> Session {
+    let base_path = PathBuf::from(&config.server.chroot_dir)
+        .join(config.server.min_homedir.trim_start_matches('/'))
+        .canonicalize()
+        .unwrap();
+
+    Session::new(base_path)
 }

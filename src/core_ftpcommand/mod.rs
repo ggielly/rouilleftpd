@@ -13,8 +13,9 @@ pub mod rmd;
 pub mod rnfr;
 pub mod rnto;
 pub mod stor;
-pub mod type_;
+pub mod type_;  // TYPE is a reserved word, so lets use _
 pub mod user;
+pub mod cdup;
 
 // The utils and common functions are here
 pub mod utils;

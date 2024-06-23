@@ -9,21 +9,30 @@ use std::io::Read;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::Mutex; // Importing Session from core_network
+use tokio::sync::Mutex;
 
-pub async fn start_server(listen_port: u16, config: Arc<Config>, ipc: Ipc) -> Result<()> {
+use crate::core_network::PathBuf;
+
+
+pub async fn start_server(listen_port: u16, config: Arc<Config>, ipc: crate::ipc::Ipc) -> Result<()> {
     let listener = TcpListener::bind(format!("0.0.0.0:{}", listen_port)).await?;
     log_message(&format!("Server listening on port {}", listen_port));
+
+    let base_path = PathBuf::from(&config.server.chroot_dir)
+        .join(config.server.min_homedir.trim_start_matches('/'))
+        .canonicalize()
+        .unwrap();
 
     loop {
         let (socket, addr) = listener.accept().await?;
         log_message(&format!("New connection from {:?}", addr));
 
         let config = Arc::clone(&config);
-        let ipc = ipc.clone();
+        let session = Arc::new(Mutex::new(Session::new(base_path.clone())));
+        let ipc_clone = ipc.clone();
 
         tokio::spawn(async move {
-            if let Err(e) = handle_connection(socket, config, ipc).await {
+            if let Err(e) = handle_connection(socket, config, session, ipc_clone).await {
                 log_message(&format!("Connection error: {:?}", e));
             }
             log_message(&format!("Connection closed for {:?}", addr));
@@ -34,6 +43,7 @@ pub async fn start_server(listen_port: u16, config: Arc<Config>, ipc: Ipc) -> Re
 pub async fn handle_connection(
     socket: TcpStream,
     config: Arc<Config>,
+    session: Arc<Mutex<Session>>,
     _ipc: crate::ipc::Ipc,
 ) -> Result<()> {
     let banner_path = if cfg!(target_os = "windows") {
@@ -54,7 +64,6 @@ pub async fn handle_connection(
     }
 
     let handlers = initialize_command_handlers();
-    let session = Arc::new(Mutex::new(Session::new()));
     let mut buffer = String::new();
 
     loop {
@@ -104,10 +113,11 @@ pub async fn handle_connection(
 }
 
 fn load_banner(path: &str) -> Result<String> {
-    let mut file =
-        File::open(path).with_context(|| format!("Failed to open banner file: {}", path))?;
+    let mut file = File::open(path)
+        .with_context(|| format!("Failed to open banner file: {}", path))?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .with_context(|| format!("Failed to read banner file: {}", path))?;
     Ok(contents)
 }
+

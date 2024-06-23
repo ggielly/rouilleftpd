@@ -10,19 +10,15 @@ use log::{info, warn, error};
 
 pub async fn handle_list_command(
     writer: Arc<Mutex<TcpStream>>,
-    config: Arc<Config>,
+    _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     _arg: String,
 ) -> Result<(), std::io::Error> {
     let session = session.lock().await;
     let current_dir = &session.current_dir;
-    let min_homedir = config.server.min_homedir.trim_start_matches('/');
-    let dir_path = PathBuf::from(&config.server.chroot_dir)
-        .join(min_homedir)
-        .join(current_dir.trim_start_matches('/'));
+    let dir_path = session.base_path.join(current_dir.trim_start_matches('/'));
 
-    info!("chroot_dir: {:?}", config.server.chroot_dir);
-    info!("min_homedir: {:?}", config.server.min_homedir);
+    info!("base_path: {:?}", session.base_path);
     info!("Current dir: {:?}", current_dir);
     info!("Constructed directory path: {:?}", dir_path);
 
@@ -36,11 +32,7 @@ pub async fn handle_list_command(
         }
     };
 
-    let chroot_dir = PathBuf::from(&config.server.chroot_dir)
-        .canonicalize()
-        .unwrap();
-
-    if !canonical_dir_path.starts_with(&chroot_dir) {
+    if !canonical_dir_path.starts_with(&session.base_path) {
         warn!("Directory listing attempt outside chroot: {:?}", canonical_dir_path);
         let mut writer = writer.lock().await;
         writer.write_all(b"550 Failed to list directory.\r\n").await?;
@@ -95,13 +87,16 @@ pub async fn handle_list_command(
 
     if let Some(data_stream) = data_stream {
         let mut data_stream = data_stream.lock().await;
+        let mut writer = writer.lock().await;
+        writer.write_all(b"150 Here comes the directory listing.\r\n").await?;
         data_stream.write_all(listing.as_bytes()).await?;
         data_stream.shutdown().await?;
+        writer.write_all(b"226 Directory send OK.\r\n").await?;
+        info!("Directory listing sent successfully.");
+    } else {
+        let mut writer = writer.lock().await;
+        writer.write_all(b"425 Can't open data connection.\r\n").await?;
     }
 
-    let mut writer = writer.lock().await;
-    writer.write_all(b"150 Here comes the directory listing.\r\n").await?;
-    writer.write_all(b"226 Directory send OK.\r\n").await?;
-    info!("Directory listing sent successfully.");
     Ok(())
 }

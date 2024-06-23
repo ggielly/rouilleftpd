@@ -13,13 +13,14 @@ pub struct Session {
     pub data_stream: Option<Arc<Mutex<TcpStream>>>,
     pub type_: String,         // The primary transfer type (A, E, I, L)
     pub byte_size: Option<u8>, // The byte size for TYPE L (None if not applicable)
-    
+    pub base_path: PathBuf,    // chroot_dir + min_dir
 }
 
 impl Session {
-    pub fn new() -> Self {
+    pub fn new(base_path: PathBuf) -> Self {
         Self {
             current_dir: String::from("/"),
+            base_path,
             rename_from: None,
             data_stream: None,
             type_: "A".to_string(), // Default transfer type is ASCII

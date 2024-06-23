@@ -15,6 +15,7 @@ pub async fn handle_pwd_command(
     // Lock the session to get the current directory.
     let session = session.lock().await;
     let current_dir = &session.current_dir;
+
     let response = format!("257 \"{}\" is the current directory.\r\n", current_dir);
 
     info!("Responding to PWD command with current directory: {}", current_dir);

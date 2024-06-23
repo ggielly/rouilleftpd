@@ -1,7 +1,7 @@
 use crate::core_network::Session;
 use crate::Config;
 use log::{error, info, warn};
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -9,14 +9,11 @@ use tokio::sync::Mutex;
 
 pub async fn handle_cwd_command(
     writer: Arc<Mutex<TcpStream>>,
-    config: Arc<Config>,
+    _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
 ) -> Result<(), std::io::Error> {
     let mut session = session.lock().await;
-    let min_homedir = config.server.min_homedir.trim_start_matches('/');
-
-    // Escape double quotes and sanitize input
     let sanitized_arg = arg.replace("\"", "\\\"");
     info!("Received CWD command with argument: {}", sanitized_arg);
 
@@ -27,24 +24,34 @@ pub async fn handle_cwd_command(
         PathBuf::from(&session.current_dir).join(&sanitized_arg)
     };
 
-    // Convert PathBuf to String, perform trimming, and then convert back to PathBuf
-    let new_dir_str = new_dir
-        .to_str()
-        .unwrap()
-        .trim_start_matches('/')
-        .to_string();
-    let dir_path = PathBuf::from(&config.server.chroot_dir)
-        .join(min_homedir)
-        .join(new_dir_str);
+    // Normalize the path to handle ".." and other relative components
+    let new_dir_normalized = new_dir.components().fold(PathBuf::new(), |mut acc, comp| {
+        match comp {
+            Component::ParentDir => {
+                acc.pop();
+            }
+            Component::RootDir => acc.push("/"),
+            Component::Normal(part) => acc.push(part),
+            _ => {}
+        }
+        acc
+    });
+
+    // Construct the full path within the chroot environment
+    let full_path = session.base_path.join(
+        new_dir_normalized
+            .strip_prefix("/")
+            .unwrap_or(&new_dir_normalized),
+    );
 
     // Log the constructed directory path
-    info!("Constructed directory path: {:?}", dir_path);
+    info!("Constructed directory path: {:?}", full_path);
 
     // Validate the final directory path is within the chroot directory
-    let canonical_dir_path = match dir_path.canonicalize() {
+    let canonical_dir_path = match full_path.canonicalize() {
         Ok(path) => path,
         Err(_) => {
-            error!("Failed to canonicalize the directory path: {:?}", dir_path);
+            error!("Failed to canonicalize the directory path: {:?}", full_path);
             let mut writer = writer.lock().await;
             writer
                 .write_all(b"550 Failed to change directory.\r\n")
@@ -53,17 +60,15 @@ pub async fn handle_cwd_command(
         }
     };
 
-    let chroot_dir = PathBuf::from(&config.server.chroot_dir)
-        .canonicalize()
-        .unwrap();
-
-    if canonical_dir_path.starts_with(&chroot_dir) && canonical_dir_path.is_dir() {
-        session.current_dir = canonical_dir_path
-            .strip_prefix(&chroot_dir)
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
+    if canonical_dir_path.starts_with(&session.base_path) && canonical_dir_path.is_dir() {
+        session.current_dir = format!(
+            "/{}",
+            canonical_dir_path
+                .strip_prefix(&session.base_path)
+                .unwrap()
+                .to_str()
+                .unwrap()
+        );
         info!("Directory successfully changed to: {}", session.current_dir);
         let mut writer = writer.lock().await;
         writer

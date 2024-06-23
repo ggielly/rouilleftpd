@@ -38,6 +38,19 @@ pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
     );
 
     handlers.insert(
+        "CDUP".to_string(),
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(crate::core_ftpcommand::cdup::handle_cdup_command(
+                writer,
+                config,
+                session,
+                arg.to_string(),
+            ))
+        })),
+    );
+
+
+    handlers.insert(
         "USER".to_string(),
         Arc::new(Box::new(|writer, config, _session, arg| {
             Box::pin(crate::core_ftpcommand::user::handle_user_command(
