@@ -1,8 +1,7 @@
 use crate::core_network::Session;
 use crate::Config;
 use log::{error, info, warn};
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -10,7 +9,7 @@ use tokio::sync::Mutex;
 
 pub async fn handle_cdup_command(
     writer: Arc<Mutex<TcpStream>>,
-    config: Arc<Config>,
+    _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     _arg: String,
 ) -> Result<(), std::io::Error> {
@@ -23,18 +22,17 @@ pub async fn handle_cdup_command(
         .unwrap_or_else(|| Path::new("/"))
         .to_path_buf();
 
-    // Ensure the new directory is within the chroot environment
-    let chroot_dir = PathBuf::from(&config.server.chroot_dir)
-        .canonicalize()
-        .unwrap();
-    let new_dir_path = chroot_dir.join(new_dir.strip_prefix("/").unwrap_or(&new_dir));
+    // Construct the full path within the chroot environment
+    let full_new_dir = session
+        .base_path
+        .join(new_dir.strip_prefix("/").unwrap_or(&new_dir));
 
-    let canonical_new_dir_path = match new_dir_path.canonicalize() {
+    let canonical_new_dir_path = match full_new_dir.canonicalize() {
         Ok(path) => path,
         Err(_) => {
             error!(
                 "Failed to canonicalize the directory path: {:?}",
-                new_dir_path
+                full_new_dir
             );
             let mut writer = writer.lock().await;
             writer
@@ -44,9 +42,9 @@ pub async fn handle_cdup_command(
         }
     };
 
-    if canonical_new_dir_path.starts_with(&chroot_dir) && canonical_new_dir_path.is_dir() {
+    if canonical_new_dir_path.starts_with(&session.base_path) && canonical_new_dir_path.is_dir() {
         session.current_dir = canonical_new_dir_path
-            .strip_prefix(&chroot_dir)
+            .strip_prefix(&session.base_path)
             .unwrap()
             .to_str()
             .unwrap()

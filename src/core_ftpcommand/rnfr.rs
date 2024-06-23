@@ -2,11 +2,11 @@ use crate::core_ftpcommand::utils::{construct_path, sanitize_input, send_respons
 use crate::core_network::Session;
 use crate::Config;
 use anyhow::Result;
+use log::{error, info, warn};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use log::{info, warn, error};
 
 /// Handles the RNFR (Rename From) FTP command.
 ///
@@ -27,7 +27,7 @@ use log::{info, warn, error};
 /// Result<(), std::io::Error> indicating the success or failure of the operation.
 pub async fn handle_rnfr_command(
     writer: Arc<Mutex<TcpStream>>,
-    config: Arc<Config>,
+    _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
 ) -> Result<(), std::io::Error> {
@@ -36,20 +36,20 @@ pub async fn handle_rnfr_command(
     info!("Received RNFR command with argument: {}", sanitized_arg);
 
     // Construct the path of the file or directory to be renamed.
-    let path = {
+    let (base_path, path) = {
         // Lock the session to get the current directory.
         let session = session.lock().await;
-        construct_path(&config, &session.current_dir, &sanitized_arg)
+        let base_path = session.base_path.clone();
+        let path = base_path.join(&session.current_dir).join(&sanitized_arg);
+        (base_path, path)
     };
     info!("Constructed path: {:?}", path);
 
-    // Canonicalize the chroot directory to resolve any symbolic links or relative paths.
-    let chroot_dir = PathBuf::from(&config.server.chroot_dir).canonicalize()?;
     // Canonicalize the path to ensure it's within the chroot directory.
     let resolved_path = path.canonicalize().unwrap_or_else(|_| path.clone());
 
     // Check if the resolved path is within the chroot directory.
-    if !resolved_path.starts_with(&chroot_dir) {
+    if !resolved_path.starts_with(&base_path) {
         error!("Path is outside of the allowed area: {:?}", resolved_path);
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());

@@ -1,13 +1,13 @@
-use crate::core_ftpcommand::utils::{construct_path, sanitize_input, send_response};
+use crate::core_ftpcommand::utils::{sanitize_input, send_response};
 use crate::core_network::Session;
 use crate::Config;
 use anyhow::Result;
+use log::{error, info, warn};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use log::{info, warn, error};
 
 /// Handles the RNTO (Rename To) FTP command.
 ///
@@ -28,7 +28,7 @@ use log::{info, warn, error};
 /// Result<(), std::io::Error> indicating the success or failure of the operation.
 pub async fn handle_rnto_command(
     writer: Arc<Mutex<TcpStream>>,
-    config: Arc<Config>,
+    _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
 ) -> Result<(), std::io::Error> {
@@ -53,18 +53,26 @@ pub async fn handle_rnto_command(
     // Construct the new path of the file or directory.
     let new_path = {
         let session = session.lock().await;
-        construct_path(&config, &session.current_dir, &sanitized_arg)
+        session
+            .base_path
+            .join(&session.current_dir)
+            .join(&sanitized_arg)
     };
     info!("New path to rename to: {:?}", new_path);
 
-    // Canonicalize the chroot directory to resolve any symbolic links or relative paths.
-    let chroot_dir = PathBuf::from(&config.server.chroot_dir).canonicalize()?;
     // Canonicalize the new path to ensure it's within the chroot directory.
+    let base_path = {
+        let session = session.lock().await;
+        session.base_path.clone()
+    };
     let resolved_new_path = new_path.canonicalize().unwrap_or_else(|_| new_path.clone());
 
     // Check if the resolved new path is within the chroot directory.
-    if !resolved_new_path.starts_with(&chroot_dir) {
-        error!("Resolved new path is outside of the allowed area: {:?}", resolved_new_path);
+    if !resolved_new_path.starts_with(&base_path) {
+        error!(
+            "Resolved new path is outside of the allowed area: {:?}",
+            resolved_new_path
+        );
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());
     }
@@ -73,12 +81,18 @@ pub async fn handle_rnto_command(
     match fs::rename(&old_path, &resolved_new_path).await {
         Ok(_) => {
             // Send success response if the file or directory was renamed successfully.
-            info!("File or directory renamed successfully from {:?} to {:?}", old_path, resolved_new_path);
+            info!(
+                "File or directory renamed successfully from {:?} to {:?}",
+                old_path, resolved_new_path
+            );
             send_response(&writer, b"250 File or directory renamed successfully.\r\n").await?;
         }
         Err(e) => {
             // Send failure response if there was an error renaming the file or directory.
-            error!("Failed to rename file or directory from {:?} to {:?}: {}", old_path, resolved_new_path, e);
+            error!(
+                "Failed to rename file or directory from {:?} to {:?}: {}",
+                old_path, resolved_new_path, e
+            );
             send_response(&writer, b"550 Failed to rename file or directory.\r\n").await?;
         }
     }

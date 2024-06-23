@@ -1,14 +1,14 @@
+use crate::core_network::Session;
+use crate::helpers::{sanitize_input, send_response};
+use crate::Config;
+use anyhow::Result;
+use log::{error, info, warn};
+use std::path::PathBuf;
 use std::sync::Arc;
+use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use crate::Config;
-use std::path::PathBuf;
-use tokio::fs::File;
-use crate::core_network::Session;
-use crate::core_ftpcommand::utils::{sanitize_input, construct_path, send_response};
-use anyhow::Result;
-use log::{info, warn, error};
 
 /// Handles the RETR (Retrieve) FTP command.
 ///
@@ -28,7 +28,7 @@ use log::{info, warn, error};
 /// Result<(), std::io::Error> indicating the success or failure of the operation.
 pub async fn handle_retr_command(
     writer: Arc<Mutex<TcpStream>>,
-    config: Arc<Config>,
+    _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
 ) -> Result<(), std::io::Error> {
@@ -41,13 +41,22 @@ pub async fn handle_retr_command(
     let sanitized_arg = sanitize_input(&arg);
     let file_path = {
         let session = session.lock().await;
-        construct_path(&config, &session.current_dir, &sanitized_arg)
+        session
+            .base_path
+            .join(&session.current_dir)
+            .join(&sanitized_arg)
     };
 
-    let chroot_dir = PathBuf::from(&config.server.chroot_dir).canonicalize()?;
-    let resolved_path = file_path.canonicalize().unwrap_or_else(|_| file_path.clone());
+    let (base_path, resolved_path) = {
+        let session = session.lock().await;
+        let base_path = session.base_path.clone();
+        let resolved_path = file_path
+            .canonicalize()
+            .unwrap_or_else(|_| file_path.clone());
+        (base_path, resolved_path)
+    };
 
-    if !resolved_path.starts_with(&chroot_dir) {
+    if !resolved_path.starts_with(&base_path) {
         error!("Path is outside of the allowed area: {:?}", resolved_path);
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());
@@ -56,7 +65,10 @@ pub async fn handle_retr_command(
     let mut file = match File::open(&resolved_path).await {
         Ok(f) => f,
         Err(e) => {
-            error!("File not found or could not be opened: {:?}, error: {}", resolved_path, e);
+            error!(
+                "File not found or could not be opened: {:?}, error: {}",
+                resolved_path, e
+            );
             send_response(&writer, b"550 File not found.\r\n").await?;
             return Ok(());
         }

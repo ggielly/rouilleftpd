@@ -1,9 +1,9 @@
 use crate::Config;
+use log::{error, info};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use log::{info, error};
 
 /// Handles the PASS (Password) FTP command.
 ///
@@ -25,7 +25,7 @@ pub async fn handle_pass_command(
     _password: String,
 ) -> Result<(), std::io::Error> {
     info!("Received PASS command. Authenticating user.");
-    
+
     let mut writer = writer.lock().await;
     if let Err(e) = writer.write_all(b"230 User logged in, proceed.\r\n").await {
         error!("Failed to send PASS response: {}", e);

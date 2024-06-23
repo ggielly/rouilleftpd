@@ -1,10 +1,10 @@
+use crate::core_network::Session;
+use crate::Config;
+use log::{error, info};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use crate::Config;
-use crate::core_network::Session;
-use log::{info, error};
 
 pub async fn handle_pwd_command(
     writer: Arc<Mutex<TcpStream>>,
@@ -16,9 +16,19 @@ pub async fn handle_pwd_command(
     let session = session.lock().await;
     let current_dir = &session.current_dir;
 
-    let response = format!("257 \"{}\" is the current directory.\r\n", current_dir);
+    // Ensure the current_dir starts with a '/'
+    let response_path = if current_dir.starts_with('/') {
+        current_dir.to_string()
+    } else {
+        format!("/{}", current_dir)
+    };
 
-    info!("Responding to PWD command with current directory: {}", current_dir);
+    let response = format!("257 \"{}\" is the current directory.\r\n", response_path);
+
+    info!(
+        "Responding to PWD command with current directory: {}",
+        response_path
+    );
 
     // Lock the writer to send the response.
     let mut writer = writer.lock().await;

@@ -2,6 +2,7 @@ mod core_cli;
 mod core_ftpcommand;
 mod core_log;
 mod core_network;
+mod helpers;
 mod ipc;
 mod server;
 
@@ -29,7 +30,6 @@ struct Config {
     server: ServerConfig,
 }
 
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::from_args();
@@ -37,7 +37,13 @@ async fn main() -> Result<()> {
     Builder::from_env(Env::default().default_filter_or("info"))
         .format(|buf, record| {
             let timestamp = buf.timestamp();
-            writeln!(buf, "[{}] [{}] {}", timestamp, record.level(), record.args())
+            writeln!(
+                buf,
+                "[{}] [{}] {}",
+                timestamp,
+                record.level(),
+                record.args()
+            )
         })
         .init();
 

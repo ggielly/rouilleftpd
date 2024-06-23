@@ -1,13 +1,13 @@
+use crate::core_network::Session;
+use crate::helpers::{sanitize_input, send_response};
+use crate::Config;
+use anyhow::Result;
+use log::{error, info};
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use std::path::PathBuf;
-use crate::core_network::Session;
-use crate::Config;
-use crate::core_ftpcommand::utils::{construct_path, sanitize_input, send_response};
-use anyhow::Result;
-use log::{info, error};
 
 /// Handles the STOR (Store File) FTP command.
 ///
@@ -29,7 +29,7 @@ use log::{info, error};
 pub async fn handle_stor_command(
     writer: Arc<Mutex<TcpStream>>,
     data_stream: Arc<Mutex<TcpStream>>,
-    config: Arc<Config>,
+    _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
 ) -> Result<(), std::io::Error> {
@@ -40,17 +40,24 @@ pub async fn handle_stor_command(
     // Construct the file path within the user's current directory.
     let file_path = {
         let session = session.lock().await;
-        construct_path(&config, &session.current_dir, &sanitized_arg)
+        session
+            .base_path
+            .join(&session.current_dir)
+            .join(&sanitized_arg)
     };
     info!("Constructed file path: {:?}", file_path);
 
-    // Canonicalize the chroot directory to resolve any symbolic links or relative paths.
-    let chroot_dir = PathBuf::from(&config.server.chroot_dir).canonicalize()?;
     // Canonicalize the file path to ensure it's within the chroot directory.
-    let resolved_path = file_path.canonicalize().unwrap_or_else(|_| file_path.clone());
+    let base_path = {
+        let session = session.lock().await;
+        session.base_path.clone()
+    };
+    let resolved_path = file_path
+        .canonicalize()
+        .unwrap_or_else(|_| file_path.clone());
 
     // Check if the resolved path is within the chroot directory.
-    if !resolved_path.starts_with(&chroot_dir) {
+    if !resolved_path.starts_with(&base_path) {
         error!("Path is outside of the allowed area: {:?}", resolved_path);
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());
@@ -67,7 +74,11 @@ pub async fn handle_stor_command(
     };
 
     // Inform the client that the file status is okay and that the data connection is about to be opened.
-    send_response(&writer, b"150 File status okay; about to open data connection.\r\n").await?;
+    send_response(
+        &writer,
+        b"150 File status okay; about to open data connection.\r\n",
+    )
+    .await?;
 
     // Read data from the data connection and write it to the file.
     let mut data_stream = data_stream.lock().await;
@@ -82,7 +93,11 @@ pub async fn handle_stor_command(
     }
 
     // Inform the client that the file transfer was successful and the data connection is being closed.
-    send_response(&writer, b"226 Closing data connection. File transfer successful.\r\n").await?;
+    send_response(
+        &writer,
+        b"226 Closing data connection. File transfer successful.\r\n",
+    )
+    .await?;
     info!("File stored successfully: {:?}", resolved_path);
 
     Ok(())

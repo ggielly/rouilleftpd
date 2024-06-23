@@ -13,8 +13,11 @@ use tokio::sync::Mutex;
 
 use crate::core_network::PathBuf;
 
-
-pub async fn start_server(listen_port: u16, config: Arc<Config>, ipc: crate::ipc::Ipc) -> Result<()> {
+pub async fn start_server(
+    listen_port: u16,
+    config: Arc<Config>,
+    ipc: crate::ipc::Ipc,
+) -> Result<()> {
     let listener = TcpListener::bind(format!("0.0.0.0:{}", listen_port)).await?;
     log_message(&format!("Server listening on port {}", listen_port));
 
@@ -113,11 +116,10 @@ pub async fn handle_connection(
 }
 
 fn load_banner(path: &str) -> Result<String> {
-    let mut file = File::open(path)
-        .with_context(|| format!("Failed to open banner file: {}", path))?;
+    let mut file =
+        File::open(path).with_context(|| format!("Failed to open banner file: {}", path))?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .with_context(|| format!("Failed to read banner file: {}", path))?;
     Ok(contents)
 }
-

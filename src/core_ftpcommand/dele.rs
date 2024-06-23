@@ -1,13 +1,13 @@
+use crate::core_network::Session;
+use crate::helpers::{sanitize_input, send_response};
+use crate::Config;
+use anyhow::Result;
+use log::{error, info, warn};
+use std::path::PathBuf;
 use std::sync::Arc;
+use tokio::fs;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use crate::Config;
-use std::path::PathBuf;
-use tokio::fs;
-use crate::core_network::Session;
-use crate::core_ftpcommand::utils::{sanitize_input, construct_path, send_response};
-use anyhow::Result;
-use log::{info, warn, error};
 
 /// Handles the DELE (Delete File) FTP command.
 ///
@@ -39,14 +39,19 @@ pub async fn handle_dele_command(
     let file_path = {
         // Lock the session to get the current directory.
         let session = session.lock().await;
-        construct_path(&config, &session.current_dir, &sanitized_arg)
+        session
+            .base_path
+            .join(&session.current_dir)
+            .join(&sanitized_arg)
     };
     info!("Constructed file path: {:?}", file_path);
 
     // Canonicalize the chroot directory to resolve any symbolic links or relative paths.
     let chroot_dir = PathBuf::from(&config.server.chroot_dir).canonicalize()?;
     // Canonicalize the file path to ensure it's within the chroot directory.
-    let resolved_path = file_path.canonicalize().unwrap_or_else(|_| file_path.clone());
+    let resolved_path = file_path
+        .canonicalize()
+        .unwrap_or_else(|_| file_path.clone());
 
     // Check if the resolved path is within the chroot directory.
     if !resolved_path.starts_with(&chroot_dir) {
@@ -67,8 +72,12 @@ pub async fn handle_dele_command(
         Ok(_) => {
             // Send success response if the file was deleted successfully.
             info!("File deleted successfully: {:?}", resolved_path);
-            send_response(&writer, format!("250 \"{}\" file deleted.\r\n", sanitized_arg).as_bytes()).await?;
-        },
+            send_response(
+                &writer,
+                format!("250 \"{}\" file deleted.\r\n", sanitized_arg).as_bytes(),
+            )
+            .await?;
+        }
         Err(e) => {
             // Send failure response if there was an error deleting the file.
             error!("Failed to delete file: {:?}, error: {}", resolved_path, e);
