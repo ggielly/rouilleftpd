@@ -5,6 +5,7 @@ use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
+use colored::*;
 
 /// Handles the PASS (Password) FTP command.
 ///
@@ -34,21 +35,20 @@ pub async fn handle_pass_command(
 
     let response: &[u8] = if let Some(username) = username {
         if username.to_lowercase() == "anonymous" {
-            info!("Anonymous login with password: {}", password);
+            info!("Anonymous login with password: {}", password.yellow());
             b"230 Anonymous user logged in, proceed.\r\n"
         } else {
-            // Here we can add real user/pass authentication later
-            info!("User {} logged in with password: {}", username, password);
+            info!("User {} logged in with password: {}", username.cyan(), password.yellow());
             b"230 User logged in, proceed.\r\n"
         }
     } else {
-        warn!("PASS command received without a preceding USER command.");
+        warn!("{}", "PASS command received without a preceding USER command.".magenta());
         b"503 Bad sequence of commands.\r\n"
     };
 
     let mut writer = writer.lock().await;
     if let Err(e) = writer.write_all(response).await {
-        error!("Failed to send PASS response: {}", e);
+        error!("Failed to send PASS response: {}", e.to_string().red());
         return Err(e);
     }
 

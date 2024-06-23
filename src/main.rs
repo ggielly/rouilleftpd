@@ -9,6 +9,7 @@ mod session;
 
 use crate::core_cli::Cli;
 use anyhow::{Context, Result};
+use colored::*;
 use env_logger::{Builder, Env};
 use ipc::Ipc;
 use serde::Deserialize;
@@ -35,16 +36,18 @@ struct Config {
 async fn main() -> Result<()> {
     let args = Cli::from_args();
 
+    // Initialize the logger with a custom format and colors
     Builder::from_env(Env::default().default_filter_or("info"))
         .format(|buf, record| {
-            let timestamp = buf.timestamp();
-            writeln!(
-                buf,
-                "[{}] [{}] {}",
-                timestamp,
-                record.level(),
-                record.args()
-            )
+            let timestamp = buf.timestamp().to_string();
+            let level = match record.level() {
+                log::Level::Error => record.level().to_string().red(),
+                log::Level::Warn => record.level().to_string().yellow(),
+                log::Level::Info => record.level().to_string().green(),
+                log::Level::Debug => record.level().to_string().blue(),
+                log::Level::Trace => record.level().to_string().white(),
+            };
+            writeln!(buf, "[{}] [{}] {}", timestamp, level, record.args())
         })
         .init();
 
