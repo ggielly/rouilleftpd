@@ -8,7 +8,6 @@ use std::fs;
 use std::path::PathBuf;
 use log::{info, warn, error};
 
-
 pub async fn handle_list_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
@@ -90,9 +89,18 @@ pub async fn handle_list_command(
         }
     }
 
+    let data_stream = session.data_stream.clone(); // Clone the data stream Arc<Mutex<TcpStream>>
+
+    drop(session); // Explicitly drop the session lock before using the data stream
+
+    if let Some(data_stream) = data_stream {
+        let mut data_stream = data_stream.lock().await;
+        data_stream.write_all(listing.as_bytes()).await?;
+        data_stream.shutdown().await?;
+    }
+
     let mut writer = writer.lock().await;
     writer.write_all(b"150 Here comes the directory listing.\r\n").await?;
-    writer.write_all(listing.as_bytes()).await?;
     writer.write_all(b"226 Directory send OK.\r\n").await?;
     info!("Directory listing sent successfully.");
     Ok(())

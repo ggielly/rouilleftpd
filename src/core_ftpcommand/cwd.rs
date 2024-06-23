@@ -1,11 +1,11 @@
 use crate::core_network::Session;
 use crate::Config;
+use log::{error, info, warn};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use log::{info, warn, error};
 
 pub async fn handle_cwd_command(
     writer: Arc<Mutex<TcpStream>>,
@@ -58,7 +58,12 @@ pub async fn handle_cwd_command(
         .unwrap();
 
     if canonical_dir_path.starts_with(&chroot_dir) && canonical_dir_path.is_dir() {
-        session.current_dir = canonical_dir_path.strip_prefix(&chroot_dir).unwrap().to_str().unwrap().to_string();
+        session.current_dir = canonical_dir_path
+            .strip_prefix(&chroot_dir)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
         info!("Directory successfully changed to: {}", session.current_dir);
         let mut writer = writer.lock().await;
         writer
