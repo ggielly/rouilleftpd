@@ -19,7 +19,7 @@ pub const MAX_DELIP_IPS: usize = 10;
     GADMIN		2	Groupadmin of at least one of the user's public
                     groups,	private groups have no such thing.
                     Use 'site chgadmin' to give or take this flag.
-    GLOCK		3	User cannot change group.
+    GLOCK		3	GroupLock : user cannot change group.
     EXEMPT		4	By default allows to log in when site is full,
                     to do 'site idle 0' (same as IDLER flag) and
                     exempts from the sim_xfers limit in config file.
@@ -55,11 +55,11 @@ pub const MAX_DELIP_IPS: usize = 10;
     only show up in 'site flags' if they're turned on. Custom flags up to
     'Z' can be used.
 
-    Note: flag 1 is not GOD mode, you must have the correct flags for the
-    actions you wish to perform.
-    Note: a user with flag 1 DOES NOT WANT flag 2.
-    Note: flags A-H can have their access changed through the -flag
-    permissions in the config file.
+    Note:   flag 1 is not GOD mode, you must have the correct flags for the
+            actions you wish to perform.
+    Note:   a user with flag 1 DOES NOT WANT flag 2.
+    Note:   flags A-H can have their access changed through the -flag
+            permissions in the config file.
 */
 pub const SITEOP: u8 = 1;
 pub const GADMIN: u8 = 2;
