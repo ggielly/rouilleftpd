@@ -5,6 +5,8 @@ use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use url::Url;
 
+use crate::constants::*;
+
 pub async fn respond_with_error(
     writer: &Arc<Mutex<TcpStream>>,
     msg: &[u8],
@@ -113,4 +115,64 @@ pub fn is_valid_username(username: &str) -> bool {
 /// Returns `true` if the password is not empty, `false` otherwise.
 pub fn is_valid_password(password: &str) -> bool {
     !password.is_empty() // You should implement more robust password checks
+}
+
+
+
+/// Maps flag names to their respective values.
+pub fn get_flag_value(flag_name: &str) -> Option<u8> {
+    match flag_name.to_uppercase().as_str() {
+        "SITEOP" => Some(SITEOP),
+        "GADMIN" => Some(GADMIN),
+        "GLOCK" => Some(GLOCK),
+        "EXEMPT" => Some(EXEMPT),
+        "COLOR" => Some(COLOR),
+        "DELETED" => Some(DELETED),
+        "USEREDIT" => Some(USEREDIT),
+        "ANONYMOUS" => Some(ANONYMOUS),
+        "NUKE" => Some(NUKE),
+        "UNNUKE" => Some(UNNUKE),
+        "UNDUPE" => Some(UNDUPE),
+        "KICK" => Some(KICK),
+        "KILL" => Some(KILL),
+        "TAKE" => Some(TAKE),
+        "GIVE" => Some(GIVE),
+        "USERS" => Some(USERS),
+        "IDLER" => Some(IDLER),
+        "CUSTOM1" => Some(CUSTOM1),
+        "CUSTOM2" => Some(CUSTOM2),
+        "CUSTOM3" => Some(CUSTOM3),
+        "CUSTOM4" => Some(CUSTOM4),
+        "CUSTOM5" => Some(CUSTOM5),
+        _ => None,
+    }
+}
+
+/// Maps flag values to their respective names.
+pub fn get_flag_name(flag_value: u8) -> Option<&'static str> {
+    match flag_value {
+        SITEOP => Some("SITEOP"),
+        GADMIN => Some("GADMIN"),
+        GLOCK => Some("GLOCK"),
+        EXEMPT => Some("EXEMPT"),
+        COLOR => Some("COLOR"),
+        DELETED => Some("DELETED"),
+        USEREDIT => Some("USEREDIT"),
+        ANONYMOUS => Some("ANONYMOUS"),
+        NUKE => Some("NUKE"),
+        UNNUKE => Some("UNNUKE"),
+        UNDUPE => Some("UNDUPE"),
+        KICK => Some("KICK"),
+        KILL => Some("KILL"),
+        TAKE => Some("TAKE"),
+        GIVE => Some("GIVE"),
+        USERS => Some("USERS"),
+        IDLER => Some("IDLER"),
+        _CUSTOM1 => Some("CUSTOM1"),
+        _CUSTOM2 => Some("CUSTOM2"),
+        _CUSTOM3 => Some("CUSTOM3"),
+        _CUSTOM4 => Some("CUSTOM4"),
+        _CUSTOM5 => Some("CUSTOM5"),
+        _ => None,
+    }
 }

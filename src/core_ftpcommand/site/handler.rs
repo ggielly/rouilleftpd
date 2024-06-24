@@ -39,6 +39,10 @@ pub async fn handle_site_command(
             info!("Handling SITE DELIP command with args: {:?}", sub_args);
             handle_delip_command(writer, config, session, sub_args).await
         }
+        "DELUSER" => {
+            info!("Handling SITE DELUSER command with args: {:?}", sub_args);
+            handle_delip_command(writer, config, session, sub_args).await
+        }
         _ => {
             warn!("Unknown SITE subcommand: {}", subcommand);
             respond_with_error(&writer, b"502 Command not implemented.\r\n").await?;
