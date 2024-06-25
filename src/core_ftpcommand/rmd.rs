@@ -1,5 +1,5 @@
-use crate::session::Session;
 use crate::helpers::{sanitize_input, send_response};
+use crate::session::Session;
 use crate::Config;
 use anyhow::Result;
 use log::{error, info, warn};
@@ -39,20 +39,29 @@ pub async fn handle_rmd_command(
     let dir_path = {
         // Lock the session to get the current directory.
         let session = session.lock().await;
-        session
-            .base_path
-            .join(&session.current_dir)
-            .join(&sanitized_arg)
+        let base_path = session.base_path.clone();
+        let current_dir = session.current_dir.clone();
+        let dir_path = base_path
+            .join(current_dir.trim_start_matches('/'))
+            .join(&sanitized_arg);
+
+        info!("base_path: {:?}", base_path);
+        info!("current_dir: {:?}", current_dir);
+        info!("dir_path: {:?}", dir_path);
+
+        dir_path
     };
+
+    // Log the constructed directory path
     info!("Constructed directory path: {:?}", dir_path);
 
     // Canonicalize the chroot directory to resolve any symbolic links or relative paths.
-    let chroot_dir = PathBuf::from(&session.lock().await.base_path).canonicalize()?;
+    let canonical_base_path = dir_path.parent().unwrap().canonicalize()?;
     // Canonicalize the directory path to ensure it's within the chroot directory.
     let resolved_path = dir_path.canonicalize().unwrap_or_else(|_| dir_path.clone());
 
     // Check if the resolved path is within the chroot directory.
-    if !resolved_path.starts_with(&chroot_dir) {
+    if !resolved_path.starts_with(&canonical_base_path) {
         error!("Path is outside of the allowed area: {:?}", resolved_path);
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());

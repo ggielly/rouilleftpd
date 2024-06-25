@@ -35,43 +35,50 @@ pub async fn handle_mkd_command(
     info!("Received MKD command with argument: {}", sanitized_arg);
 
     // Construct the new directory path within the user's current directory.
-    let (base_path, dir_path) = {
+    let dir_path = {
         // Lock the session to get the current directory.
         let session = session.lock().await;
-        (
-            session.base_path.clone(),
-            session
-                .base_path
-                .join(&session.current_dir)
-                .join(&sanitized_arg),
-        )
+        let base_path = session.base_path.clone();
+        let current_dir = session.current_dir.clone();
+        let dir_path = base_path
+            .join(current_dir.trim_start_matches('/'))
+            .join(&sanitized_arg);
+
+        info!("base_path: {:?}", base_path);
+        info!("current_dir: {:?}", current_dir);
+        info!("dir_path: {:?}", dir_path);
+
+        dir_path
     };
 
     // Log the constructed directory path
     info!("Constructed directory path: {:?}", dir_path);
 
-    // Canonicalize the new directory path to ensure it's within the chroot directory.
-    let resolved_path = dir_path.canonicalize().unwrap_or_else(|_| dir_path.clone());
+    // Canonicalize the base path.
+    let canonical_base_path = dir_path.parent().unwrap().canonicalize()?;
 
     // Check if the resolved path is within the chroot directory.
-    if !resolved_path.starts_with(&base_path) {
-        error!("Path is outside of the allowed area: {:?}", resolved_path);
+    if !canonical_base_path.starts_with(&canonical_base_path) {
+        error!(
+            "Path is outside of the allowed area: {:?}",
+            canonical_base_path
+        );
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());
     }
 
     // Check if the directory already exists.
-    if resolved_path.exists() {
-        warn!("Directory already exists: {:?}", resolved_path);
+    if dir_path.exists() {
+        warn!("Directory already exists: {:?}", dir_path);
         send_response(&writer, b"550 Directory already exists.\r\n").await?;
         return Ok(());
     }
 
     // Attempt to create the directory.
-    match fs::create_dir_all(&resolved_path).await {
+    match fs::create_dir_all(&dir_path).await {
         Ok(_) => {
             // Send success response if the directory was created successfully.
-            info!("Directory created successfully: {:?}", resolved_path);
+            info!("Directory created successfully: {:?}", dir_path);
             send_response(
                 &writer,
                 format!("257 \"{}\" directory created.\r\n", sanitized_arg).as_bytes(),
@@ -80,10 +87,7 @@ pub async fn handle_mkd_command(
         }
         Err(e) => {
             // Send failure response if there was an error creating the directory.
-            error!(
-                "Failed to create directory: {:?}, error: {}",
-                resolved_path, e
-            );
+            error!("Failed to create directory: {:?}, error: {}", dir_path, e);
             send_response(&writer, b"550 Failed to create directory.\r\n").await?;
         }
     }
