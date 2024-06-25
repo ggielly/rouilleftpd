@@ -1,6 +1,6 @@
 use crate::constants::DELETED;
 use crate::core_ftpcommand::site::helper::{
-    get_flag_name, get_flag_value, respond_with_error, respond_with_success,
+    respond_with_error, respond_with_success,
 };
 use crate::{session::Session, Config};
 use log::{info, warn};

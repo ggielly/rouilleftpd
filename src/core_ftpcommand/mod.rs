@@ -23,3 +23,4 @@ pub mod user;
 
 // The utils and common functions are here
 pub mod utils;
+pub mod ftpcommand;

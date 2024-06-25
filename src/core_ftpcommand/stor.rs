@@ -27,7 +27,7 @@ use tokio::sync::Mutex;
 /// Result<(), std::io::Error> indicating the success or failure of the operation.
 pub async fn handle_stor_command(
     writer: Arc<Mutex<TcpStream>>,
-    data_stream: Arc<Mutex<TcpStream>>,
+    data_stream: Option<Arc<Mutex<TcpStream>>>,
     _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
@@ -72,6 +72,15 @@ pub async fn handle_stor_command(
         }
     };
 
+    // Check if the data stream is available
+    let mut data_stream = match data_stream {
+        Some(ref ds) => ds.lock().await,
+        None => {
+            send_response(&writer, b"425 Can't open data connection.\r\n").await?;
+            return Ok(());
+        }
+    };
+
     // Inform the client that the file status is okay and that the data connection is about to be opened.
     send_response(
         &writer,
@@ -80,7 +89,6 @@ pub async fn handle_stor_command(
     .await?;
 
     // Read data from the data connection and write it to the file.
-    let mut data_stream = data_stream.lock().await;
     let mut buffer = vec![0; 8192];
 
     loop {

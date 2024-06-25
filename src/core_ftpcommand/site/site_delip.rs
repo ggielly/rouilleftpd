@@ -1,16 +1,16 @@
 use crate::constants::{MIN_DELIP_ARGS, MAX_DELIP_IPS};
 use crate::{session::Session, Config};
-use log::{error, info, warn};
+use log::{info, warn};
 use std::{
     fs::{self, OpenOptions},
     io::{Read, Write},
-    path::{Path, PathBuf},
+    path::{PathBuf},
     sync::Arc,
 };
 use tokio::{io::AsyncWriteExt, net::TcpStream, sync::Mutex};
 
 use crate::core_ftpcommand::site::helper::{
-    is_valid_ident_ip, is_valid_ip_or_hostname, respond_with_error, respond_with_success,
+    respond_with_error, respond_with_success,
 };
 
 pub async fn handle_delip_command(

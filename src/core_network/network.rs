@@ -1,11 +1,12 @@
+use crate::core_ftpcommand::ftpcommand::FtpCommand;
 use crate::core_ftpcommand::handlers::initialize_command_handlers;
 use crate::core_log::logger::log_message;
-use std::path::PathBuf;
 use crate::session::Session;
 use crate::Config;
 use anyhow::{Context, Result};
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
@@ -66,6 +67,7 @@ pub async fn handle_connection(
 
     let handlers = initialize_command_handlers();
     let mut buffer = String::new();
+    let data_stream: Option<Arc<Mutex<TcpStream>>> = None;
 
     loop {
         buffer.clear();
@@ -91,26 +93,67 @@ pub async fn handle_connection(
             continue;
         }
 
-        let cmd = parts[0].to_ascii_uppercase();
+        let cmd_str = parts[0].to_ascii_uppercase();
+        let cmd = match cmd_str.as_str() {
+            "ALLO" => FtpCommand::ALLO,
+            "CDUP" => FtpCommand::CDUP,
+            "FEAT" => FtpCommand::FEAT,
+            "SYST" => FtpCommand::SYST,
+            "SITE" => FtpCommand::SITE,
+            "STOR" => FtpCommand::STOR,
+            "USER" => FtpCommand::USER,
+            "PASS" => FtpCommand::PASS,
+            "QUIT" => FtpCommand::QUIT,
+            "PWD" => FtpCommand::PWD,
+            "LIST" => FtpCommand::LIST,
+            "CWD" => FtpCommand::CWD,
+            "NOOP" => FtpCommand::NOOP,
+            "MKD" => FtpCommand::MKD,
+            "RMD" => FtpCommand::RMD,
+            "DELE" => FtpCommand::DELE,
+            "RNFR" => FtpCommand::RNFR,
+            "RNTO" => FtpCommand::RNTO,
+            "RETR" => FtpCommand::RETR,
+            "PORT" => FtpCommand::PORT,
+            "PASV" => FtpCommand::PASV,
+            "TYPE" => FtpCommand::TYPE,
+            _ => {
+                let mut socket = socket.lock().await;
+                socket
+                    .write_all(b"502 Command not implemented.\r\n")
+                    .await?;
+                continue;
+            }
+        };
+
         let args = parts[1..].to_vec();
 
         if let Some(handler) = handlers.get(&cmd) {
-            if let Err(e) = handler(
-                Arc::clone(&socket),
-                Arc::clone(&config),
-                Arc::clone(&session),
-                args.join(" "),
-            )
-            .await
-            {
-                log_message(&format!("Error handling command {}: {:?}", cmd, e));
-                break;
+            if cmd == FtpCommand::STOR {
+                if let Err(e) = handler(
+                    Arc::clone(&socket),
+                    Arc::clone(&config),
+                    Arc::clone(&session),
+                    args.join(" "),
+                )
+                .await
+                {
+                    log_message(&format!("Error handling command {}: {:?}", cmd_str, e));
+                    break;
+                }
+            } else {
+                if let Err(e) = handler(
+                    Arc::clone(&socket),
+                    Arc::clone(&config),
+                    Arc::clone(&session),
+                    args.join(" "),
+                )
+                .await
+                {
+                    log_message(&format!("Error handling command {}: {:?}", cmd_str, e));
+                    break;
+                }
             }
-        } else {
-            let mut socket = socket.lock().await;
-            socket
-                .write_all(b"502 Command not implemented.\r\n")
-                .await?;
         }
     }
     Ok(())

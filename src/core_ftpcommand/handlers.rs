@@ -1,45 +1,53 @@
+use crate::core_ftpcommand::ftpcommand::FtpCommand;
 use crate::session::Session;
 use crate::Config;
+use anyhow::Result;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::net::TcpStream;
-use tokio::sync::Mutex;
+use tokio::sync::Mutex as TokioMutex;
 
 // Specific crated for PORT and PASV commands
 use crate::core_network::pasv;
 use crate::core_network::port;
 
-type BoxedHandler = Box<
+type CommandHandler = Box<
     dyn Fn(
-            Arc<Mutex<TcpStream>>,
+            Arc<TokioMutex<TcpStream>>,
             Arc<Config>,
-            Arc<Mutex<Session>>,
-            String,
+            Arc<TokioMutex<Session>>,
+            String, // Full command string
         ) -> Pin<Box<dyn Future<Output = Result<(), std::io::Error>> + Send>>
         + Send
         + Sync,
 >;
 
-pub fn initialize_command_handlers() -> HashMap<String, Arc<BoxedHandler>> {
-    let mut handlers: HashMap<String, Arc<BoxedHandler>> = HashMap::new();
-
-// SITE command handler
-handlers.insert(
-    "SITE".to_string(),
-    Arc::new(Box::new(|writer, config, session, arg| {
-        // Pass the original 'arg' string without splitting
-        Box::pin(crate::core_ftpcommand::site::handle_site_command(
-            writer, config, session, arg, 
-        ))
-    })),
-);
-
+pub fn initialize_command_handlers() -> HashMap<FtpCommand, Arc<CommandHandler>> {
+    let mut handlers: HashMap<FtpCommand, Arc<CommandHandler>> = HashMap::new();
 
     handlers.insert(
-        "FEAT".to_string(),
-        Arc::new(Box::new(|writer, _config, _session, arg| {
+        FtpCommand::ALLO,
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(crate::core_ftpcommand::allo::handle_allo_command(
+                writer, config, session, arg,
+            ))
+        })),
+    );
+
+    handlers.insert(
+        FtpCommand::CDUP,
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(crate::core_ftpcommand::cdup::handle_cdup_command(
+                writer, config, session, arg,
+            ))
+        })),
+    );
+
+    handlers.insert(
+        FtpCommand::FEAT,
+        Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::feat::handle_feat_command(
                 writer, arg,
             ))
@@ -47,47 +55,33 @@ handlers.insert(
     );
 
     handlers.insert(
-        "ALLO".to_string(),
-        Arc::new(Box::new(|writer, _config, _session, arg| {
-            Box::pin(crate::core_ftpcommand::allo::handle_allo_command(
-                writer, arg,
-            ))
-        })),
-    );
-
-    handlers.insert(
-        "SYST".to_string(),
-        Arc::new(Box::new(|writer, _config, _session, _arg| {
+        FtpCommand::SYST,
+        Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::syst::handle_syst_command(writer))
         })),
     );
 
     handlers.insert(
-        "TYPE".to_string(),
+        FtpCommand::SITE,
         Arc::new(Box::new(|writer, config, session, arg| {
-            Box::pin(crate::core_ftpcommand::type_::handle_type_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
+            Box::pin(crate::core_ftpcommand::site::handle_site_command(
+                writer, config, session, arg,
             ))
         })),
     );
 
     handlers.insert(
-        "CDUP".to_string(),
+        FtpCommand::STOR,
         Arc::new(Box::new(|writer, config, session, arg| {
-            Box::pin(crate::core_ftpcommand::cdup::handle_cdup_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
+            Box::pin(crate::core_ftpcommand::stor::handle_stor_command(
+                writer, None, // Placeholder for the data stream
+                config, session, arg,
             ))
         })),
     );
 
     handlers.insert(
-        "USER".to_string(),
+        FtpCommand::USER,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::user::handle_user_command(
                 writer, config, session, arg,
@@ -96,7 +90,7 @@ handlers.insert(
     );
 
     handlers.insert(
-        "PASS".to_string(),
+        FtpCommand::PASS,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::pass::handle_pass_command(
                 writer, config, session, arg,
@@ -105,7 +99,7 @@ handlers.insert(
     );
 
     handlers.insert(
-        "QUIT".to_string(),
+        FtpCommand::QUIT,
         Arc::new(Box::new(|writer, config, _session, arg| {
             Box::pin(crate::core_ftpcommand::quit::handle_quit_command(
                 writer,
@@ -116,43 +110,34 @@ handlers.insert(
     );
 
     handlers.insert(
-        "PWD".to_string(),
+        FtpCommand::PWD,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::pwd::handle_pwd_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
+                writer, config, session, arg,
             ))
         })),
     );
 
     handlers.insert(
-        "LIST".to_string(),
+        FtpCommand::LIST,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::list::handle_list_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
+                writer, config, session, arg,
             ))
         })),
     );
 
     handlers.insert(
-        "CWD".to_string(),
+        FtpCommand::CWD,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::cwd::handle_cwd_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
+                writer, config, session, arg,
             ))
         })),
     );
 
     handlers.insert(
-        "NOOP".to_string(),
+        FtpCommand::NOOP,
         Arc::new(Box::new(|writer, config, _session, arg| {
             Box::pin(crate::core_ftpcommand::noop::handle_noop_command(
                 writer,
@@ -163,70 +148,65 @@ handlers.insert(
     );
 
     handlers.insert(
-        "MKD".to_string(),
+        FtpCommand::MKD,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::mkd::handle_mkd_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
+                writer, config, session, arg,
             ))
         })),
     );
 
     handlers.insert(
-        "RMD".to_string(),
+        FtpCommand::RMD,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::rmd::handle_rmd_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
+                writer, config, session, arg,
             ))
         })),
     );
 
     handlers.insert(
-        "DELE".to_string(),
+        FtpCommand::DELE,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::dele::handle_dele_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
+                writer, config, session, arg,
             ))
         })),
     );
 
     handlers.insert(
-        "RNFR".to_string(),
+        FtpCommand::RNFR,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::rnfr::handle_rnfr_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
+                writer, config, session, arg,
             ))
         })),
     );
 
     handlers.insert(
-        "RNTO".to_string(),
+        FtpCommand::RNTO,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::rnto::handle_rnto_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
+                writer, config, session, arg,
             ))
         })),
     );
 
     handlers.insert(
-        "RETR".to_string(),
+        FtpCommand::RETR,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(crate::core_ftpcommand::retr::handle_retr_command(
+                writer, config, session, arg,
+            ))
+        })),
+    );
+
+    handlers.insert(
+        FtpCommand::STOR,
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(crate::core_ftpcommand::stor::handle_stor_command(
                 writer,
+                None, // or pass the actual data_stream if available
                 config,
                 session,
                 arg.to_string(),
@@ -235,27 +215,7 @@ handlers.insert(
     );
 
     handlers.insert(
-        "STOR".to_string(),
-        Arc::new(Box::new(|writer, config, session, arg| {
-            Box::pin(async move {
-                // Create a data connection here
-                let data_stream = Arc::new(Mutex::new(
-                    TcpStream::connect("localhost:20").await.unwrap(),
-                ));
-                crate::core_ftpcommand::stor::handle_stor_command(
-                    writer,
-                    data_stream,
-                    config,
-                    session,
-                    arg.to_string(),
-                )
-                .await
-            })
-        })),
-    );
-
-    handlers.insert(
-        "PORT".to_string(),
+        FtpCommand::PORT,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(port::handle_port_command(
                 writer,
@@ -267,7 +227,7 @@ handlers.insert(
     );
 
     handlers.insert(
-        "PASV".to_string(),
+        FtpCommand::PASV,
         Arc::new(Box::new(|writer, config, session, arg| {
             Box::pin(pasv::handle_pasv_command(
                 writer,
@@ -278,7 +238,16 @@ handlers.insert(
         })),
     );
 
-    
+    handlers.insert(
+        FtpCommand::TYPE,
+        Arc::new(Box::new(|writer, config, session, arg| {
+            Box::pin(crate::core_ftpcommand::type_::handle_type_command(
+                writer, config, session, arg,
+            ))
+        })),
+    );
+
+    // Other commands here !
 
     handlers
 }

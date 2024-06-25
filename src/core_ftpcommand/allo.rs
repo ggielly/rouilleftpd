@@ -1,4 +1,4 @@
-use anyhow::Result;
+/* use anyhow::Result;
 use log::{error, info};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -23,6 +23,39 @@ pub async fn handle_allo_command(
     writer: Arc<Mutex<TcpStream>>,
     _arg: String,
 ) -> Result<(), std::io::Error> {
+    // Log the received ALLO command.
+    info!("Received ALLO command with argument: {}", _arg);
+
+    // Define the success response message.
+    let response = "200 ALLO command successful.\r\n";
+
+    // Lock the writer to send the response.
+    let mut writer = writer.lock().await;
+    if let Err(e) = writer.write_all(response.as_bytes()).await {
+        error!("Failed to send ALLO response: {}", e);
+        return Err(e);
+    }
+
+    info!("Sent ALLO success response.");
+    Ok(())
+}*/
+
+use anyhow::Result;
+use log::{error, info};
+use std::sync::Arc;
+use tokio::io::AsyncWriteExt;
+use tokio::net::TcpStream;
+use tokio::sync::Mutex as TokioMutex;
+use crate::Config;
+use crate::session::Session;
+
+pub async fn handle_allo_command(
+    writer: Arc<TokioMutex<TcpStream>>,
+    _config: Arc<Config>,
+    _session: Arc<TokioMutex<Session>>,
+    _arg: String,
+) -> Result<(), std::io::Error> {
+
     // Log the received ALLO command.
     info!("Received ALLO command with argument: {}", _arg);
 
