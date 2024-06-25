@@ -1,5 +1,5 @@
-use crate::session::Session;
 use crate::helpers::{sanitize_input, send_response};
+use crate::session::Session;
 use crate::Config;
 use anyhow::Result;
 use log::{error, info, warn};

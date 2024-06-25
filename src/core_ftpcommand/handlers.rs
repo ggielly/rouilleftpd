@@ -215,13 +215,10 @@ pub fn initialize_command_handlers() -> HashMap<FtpCommand, Arc<CommandHandler>>
     );
 
     handlers.insert(
-        FtpCommand::PORT,
+        FtpCommand::TYPE,
         Arc::new(Box::new(|writer, config, session, arg| {
-            Box::pin(port::handle_port_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
+            Box::pin(crate::core_ftpcommand::type_::handle_type_command(
+                writer, config, session, arg,
             ))
         })),
     );
@@ -229,21 +226,14 @@ pub fn initialize_command_handlers() -> HashMap<FtpCommand, Arc<CommandHandler>>
     handlers.insert(
         FtpCommand::PASV,
         Arc::new(Box::new(|writer, config, session, arg| {
-            Box::pin(pasv::handle_pasv_command(
-                writer,
-                config,
-                session,
-                arg.to_string(),
-            ))
+            Box::pin(pasv::handle_pasv_command(writer, config, session, arg))
         })),
     );
 
     handlers.insert(
-        FtpCommand::TYPE,
+        FtpCommand::PORT,
         Arc::new(Box::new(|writer, config, session, arg| {
-            Box::pin(crate::core_ftpcommand::type_::handle_type_command(
-                writer, config, session, arg,
-            ))
+            Box::pin(port::handle_port_command(writer, config, session, arg))
         })),
     );
 
