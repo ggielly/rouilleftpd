@@ -18,8 +18,6 @@ use crate::core_ftpcommand::utils::send_response;
 use crate::core_network::pasv::accept_pasv_connection;
 use crate::core_network::pasv::setup_pasv_listener;
 
-use std::net::SocketAddr;
-
 pub async fn start_server(
     listen_port: u16,
     config: Arc<Config>,

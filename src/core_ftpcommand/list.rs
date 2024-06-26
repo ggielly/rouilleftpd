@@ -7,17 +7,19 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
+use crate::core_ftpcommand::site::helper::{replace_cookies, load_statline};
+
 pub async fn handle_list_command(
     writer: Arc<Mutex<TcpStream>>,
-    _config: Arc<Config>,
+    config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     _arg: String,
 ) -> Result<(), std::io::Error> {
-    let session = session.lock().await;
-    let current_dir = &session.current_dir;
-    let dir_path = session.base_path.join(current_dir.trim_start_matches('/'));
+    let session_lock = session.lock().await;
+    let current_dir = &session_lock.current_dir;
+    let dir_path = session_lock.base_path.join(current_dir.trim_start_matches('/'));
 
-    info!("base_path: {:?}", session.base_path);
+    info!("base_path: {:?}", session_lock.base_path);
     info!("Current dir: {:?}", current_dir);
     info!("Constructed directory path: {:?}", dir_path);
 
@@ -26,22 +28,18 @@ pub async fn handle_list_command(
         Err(e) => {
             error!("Failed to canonicalize the directory path: {:?}", e);
             let mut writer = writer.lock().await;
-            writer
-                .write_all(b"550 Failed to list directory.\r\n")
-                .await?;
+            writer.write_all(b"550 Failed to list directory.\r\n").await?;
             return Ok(());
         }
     };
 
-    if !canonical_dir_path.starts_with(&session.base_path) {
+    if !canonical_dir_path.starts_with(&session_lock.base_path) {
         warn!(
             "Directory listing attempt outside chroot: {:?}",
             canonical_dir_path
         );
         let mut writer = writer.lock().await;
-        writer
-            .write_all(b"550 Failed to list directory.\r\n")
-            .await?;
+        writer.write_all(b"550 Failed to list directory.\r\n").await?;
         return Ok(());
     }
 
@@ -51,9 +49,7 @@ pub async fn handle_list_command(
             error!("Error reading directory: {:?}", e);
             error!("Real path attempted: {:?}", canonical_dir_path);
             let mut writer = writer.lock().await;
-            writer
-                .write_all(b"550 Failed to list directory.\r\n")
-                .await?;
+            writer.write_all(b"550 Failed to list directory.\r\n").await?;
             return Ok(());
         }
     };
@@ -93,16 +89,14 @@ pub async fn handle_list_command(
         }
     }
 
-    let data_stream = session.data_stream.clone(); // Clone the data stream Arc<Mutex<TcpStream>>
+    let data_stream = session_lock.data_stream.clone(); // Clone the data stream Arc<Mutex<TcpStream>>
 
-    drop(session); // Explicitly drop the session lock before using the data stream
+    drop(session_lock); // Explicitly drop the session lock before using the data stream
 
     if let Some(data_stream) = data_stream {
         let mut data_stream = data_stream.lock().await;
         let mut writer = writer.lock().await;
-        writer
-            .write_all(b"150 Here comes the directory listing.\r\n")
-            .await?;
+        writer.write_all(b"150 Here comes the directory listing.\r\n").await?;
 
         match data_stream.write_all(listing.as_bytes()).await {
             Ok(_) => {
@@ -114,17 +108,21 @@ pub async fn handle_list_command(
             }
             Err(e) => {
                 error!("Failed to send directory listing: {:?}", e);
-                writer
-                    .write_all(b"426 Connection closed; transfer aborted.\r\n")
-                    .await?;
+                writer.write_all(b"426 Connection closed; transfer aborted.\r\n").await?;
             }
         }
     } else {
         let mut writer = writer.lock().await;
-        writer
-            .write_all(b"425 Can't open data connection.\r\n")
-            .await?;
+        writer.write_all(b"425 Can't open data connection.\r\n").await?;
     }
+
+    if let Ok(statline_template) = load_statline(config.clone()).await {
+        let statline = replace_cookies(statline_template, session).await;
+        let mut writer = writer.lock().await;
+        writer.write_all(statline.as_bytes()).await?;
+        info!("Statline sent successfully.");
+    }
+    
 
     Ok(())
 }

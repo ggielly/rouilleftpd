@@ -4,8 +4,15 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use url::Url;
+use log::error;
 
 use crate::constants::*;
+use crate::Config;
+use crate::session::Session;
+use crate::tokio::fs;
+
+// Load the src/cookies.rs
+use crate::cookies::COOKIE_DEFINITIONS;
 
 pub async fn respond_with_error(
     writer: &Arc<Mutex<TcpStream>>,
@@ -175,4 +182,51 @@ pub fn get_flag_name(flag_value: u8) -> Option<&'static str> {
         CUSTOM5 => Some("CUSTOM5"),
         _ => None,
     }
+}
+
+
+pub async fn load_statline(config: Arc<Config>) -> Result<String, std::io::Error> {
+    let statline_path = format!("{}/ftp-data/text/statline.txt", config.server.chroot_dir);
+    match fs::read_to_string(statline_path).await {
+        Ok(content) => Ok(content),
+        Err(e) => {
+            error!("Failed to read statline file: {}", e);
+            Err(e)
+        }
+    }
+}
+
+pub async fn replace_cookies(statline: String, session: Arc<Mutex<Session>>) -> String {
+    let mut statline_replaced = statline;
+    let session = session.lock().await;
+    
+    let ul_stat = (0.0, "MB".to_string());
+    let dl_stat = (0.0, "MB".to_string());
+    let speed_stat = (7181.07, "K/s".to_string());
+    let free_space_stat = 973625.0;
+    let section = "DEFAULT".to_string();
+    let credits_stat = (14.6, "MB".to_string());
+    let ratio_stat = "Unlimited".to_string();
+    
+    let replacements = vec![
+        ("%[%.1f]IG%[%s]Y", format!("{:.1}{}", ul_stat.0, ul_stat.1)),
+        ("%[%.1f]IJ%[%s]Y", format!("{:.1}{}", dl_stat.0, dl_stat.1)),
+        ("%[%.2f]A%[%s]V", format!("{:.2}{}", speed_stat.0, speed_stat.1)),
+        ("%[%.0f]FMB", format!("{:.0}MB", free_space_stat)),
+        ("%[%s]b", section),
+        ("%[%.1f]Ic%[%s]Y", format!("{:.1}{}", credits_stat.0, credits_stat.1)),
+        ("%[%s]Ir", ratio_stat),
+    ];
+    
+    for (cookie, value) in replacements {
+        statline_replaced = statline_replaced.replace(cookie, &value);
+    }
+
+    // Remove formatting markers
+    statline_replaced = statline_replaced.replace("!e", "");
+    statline_replaced = statline_replaced.replace("!g", "");
+    statline_replaced = statline_replaced.replace("[!G", "[");
+    statline_replaced = statline_replaced.replace("]!0", "]");
+
+    statline_replaced
 }

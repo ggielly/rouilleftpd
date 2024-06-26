@@ -6,6 +6,7 @@ mod helpers;
 mod ipc;
 mod server;
 mod session;
+mod cookies;
 
 use crate::core_cli::Cli;
 use anyhow::{Context, Result};

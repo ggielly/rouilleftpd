@@ -84,3 +84,5 @@ pub const CUSTOM3: u8 = 21;
 pub const CUSTOM4: u8 = 22;
 pub const CUSTOM5: u8 = 23;
 // End of flags
+
+pub const STATLINE_PATH: &str = "ftp-data/text/statline.txt";
