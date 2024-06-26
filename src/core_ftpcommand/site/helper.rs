@@ -168,11 +168,11 @@ pub fn get_flag_name(flag_value: u8) -> Option<&'static str> {
         GIVE => Some("GIVE"),
         USERS => Some("USERS"),
         IDLER => Some("IDLER"),
-        _CUSTOM1 => Some("CUSTOM1"),
-        _CUSTOM2 => Some("CUSTOM2"),
-        _CUSTOM3 => Some("CUSTOM3"),
-        _CUSTOM4 => Some("CUSTOM4"),
-        _CUSTOM5 => Some("CUSTOM5"),
+        CUSTOM1 => Some("CUSTOM1"),
+        CUSTOM2 => Some("CUSTOM2"),
+        CUSTOM3 => Some("CUSTOM3"),
+        CUSTOM4 => Some("CUSTOM4"),
+        CUSTOM5 => Some("CUSTOM5"),
         _ => None,
     }
 }

@@ -103,10 +103,22 @@ pub async fn handle_list_command(
         writer
             .write_all(b"150 Here comes the directory listing.\r\n")
             .await?;
-        data_stream.write_all(listing.as_bytes()).await?;
-        data_stream.shutdown().await?;
-        writer.write_all(b"226 Directory send OK.\r\n").await?;
-        info!("Directory listing sent successfully.");
+
+        match data_stream.write_all(listing.as_bytes()).await {
+            Ok(_) => {
+                if let Err(e) = data_stream.shutdown().await {
+                    error!("Failed to shutdown data stream: {:?}", e);
+                }
+                writer.write_all(b"226 Directory send OK.\r\n").await?;
+                info!("Directory listing sent successfully.");
+            }
+            Err(e) => {
+                error!("Failed to send directory listing: {:?}", e);
+                writer
+                    .write_all(b"426 Connection closed; transfer aborted.\r\n")
+                    .await?;
+            }
+        }
     } else {
         let mut writer = writer.lock().await;
         writer

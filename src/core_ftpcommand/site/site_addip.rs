@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tokio::{io::AsyncWriteExt, net::TcpStream, sync::Mutex};
+use tokio::{net::TcpStream, sync::Mutex};
 
 use crate::core_ftpcommand::site::helper::{respond_with_error, respond_with_success, is_valid_ident_ip};
 

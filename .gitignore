@@ -36,3 +36,6 @@ Cargo.lock
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+# RouilleFTPd specific
+site/

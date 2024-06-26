@@ -1,5 +1,5 @@
 use crate::{session::Session, Config};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use log::{error, info};
 use std::net::IpAddr;
 use std::sync::Arc;
@@ -57,7 +57,7 @@ pub async fn handle_pasv_command(
 
 /// Sets up a passive mode (PASV) listener.
 /// Returns the listener and the formatted PASV response.
-async fn setup_pasv_listener(pasv_ip: IpAddr) -> Result<(TcpListener, String), std::io::Error> {
+pub async fn setup_pasv_listener(pasv_ip: IpAddr) -> Result<(TcpListener, String), std::io::Error> {
     let listener = TcpListener::bind((pasv_ip, 0)).await?;
     let addr = listener.local_addr()?;
 
@@ -76,7 +76,7 @@ async fn setup_pasv_listener(pasv_ip: IpAddr) -> Result<(TcpListener, String), s
 }
 
 /// Accepts the incoming connection on the passive listener.
-async fn accept_pasv_connection(listener: TcpListener) -> Result<TcpStream, std::io::Error> {
+pub async fn accept_pasv_connection(listener: TcpListener) -> Result<TcpStream, std::io::Error> {
     let (data_stream, _) = listener.accept().await?;
     Ok(data_stream)
 }

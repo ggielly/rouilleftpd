@@ -10,7 +10,7 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
-use tokio::{io::AsyncWriteExt, net::TcpStream, sync::Mutex};
+use tokio::{net::TcpStream, sync::Mutex};
 
 const MIN_DELUSER_ARGS: usize = 1;
 

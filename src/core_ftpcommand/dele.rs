@@ -1,9 +1,9 @@
-use crate::session::Session;
 use crate::helpers::{sanitize_input, send_response};
+use crate::session::Session;
 use crate::Config;
 use anyhow::Result;
 use log::{error, info, warn};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 use tokio::net::TcpStream;
@@ -39,10 +39,15 @@ pub async fn handle_dele_command(
     let file_path = {
         // Lock the session to get the current directory.
         let session = session.lock().await;
-        session
-            .base_path
-            .join(&session.current_dir)
-            .join(&sanitized_arg)
+        let mut current_dir = session.current_dir.clone();
+
+        // Remove leading slash from current_dir if present
+        if current_dir.starts_with('/') {
+            current_dir = current_dir.trim_start_matches('/').to_string();
+        }
+
+        // Join the base_path, current_dir, and sanitized_arg to construct the full path.
+        session.base_path.join(current_dir).join(&sanitized_arg)
     };
     info!("Constructed file path: {:?}", file_path);
 
@@ -52,6 +57,9 @@ pub async fn handle_dele_command(
     let resolved_path = file_path
         .canonicalize()
         .unwrap_or_else(|_| file_path.clone());
+
+    info!("Canonicalized file path: {:?}", resolved_path);
+    info!("Chroot directory: {:?}", chroot_dir);
 
     // Check if the resolved path is within the chroot directory.
     if !resolved_path.starts_with(&chroot_dir) {

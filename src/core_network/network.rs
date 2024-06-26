@@ -4,6 +4,7 @@ use crate::core_log::logger::log_message;
 use crate::session::Session;
 use crate::Config;
 use anyhow::{Context, Result};
+use log::{error, info};
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
@@ -12,13 +13,21 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
 
+use crate::core_ftpcommand::utils::send_response;
+
+use crate::core_network::pasv::accept_pasv_connection;
+use crate::core_network::pasv::setup_pasv_listener;
+
+use std::net::SocketAddr;
+
 pub async fn start_server(
     listen_port: u16,
     config: Arc<Config>,
     ipc: crate::ipc::Ipc,
 ) -> Result<()> {
     let listener = TcpListener::bind(format!("0.0.0.0:{}", listen_port)).await?;
-    log_message(&format!("Server listening on port {}", listen_port));
+    //log_message(&format!("Server listening on port {}", listen_port));
+    info!("Server listening on port {}", listen_port);
 
     let base_path = PathBuf::from(&config.server.chroot_dir)
         .join(config.server.min_homedir.trim_start_matches('/'))
@@ -27,7 +36,7 @@ pub async fn start_server(
 
     loop {
         let (socket, addr) = listener.accept().await?;
-        log_message(&format!("New connection from {:?}", addr));
+        info!("New connection from {:?}", addr);
 
         let config = Arc::clone(&config);
         let session = Arc::new(Mutex::new(Session::new(base_path.clone())));
@@ -62,12 +71,12 @@ pub async fn handle_connection(
         socket
             .write_all(format!("220-{}\r\n", banner_text).as_bytes())
             .await?;
-        socket.write_all(b"220 This is a banner.\r\n").await?;
+        socket.write_all(b"220 This is a banner !#%.\r\n").await?;
     }
 
     let handlers = initialize_command_handlers();
     let mut buffer = String::new();
-    let data_stream: Option<Arc<Mutex<TcpStream>>> = None;
+    let mut data_stream: Option<Arc<Mutex<TcpStream>>> = None;
 
     loop {
         buffer.clear();
@@ -78,18 +87,20 @@ pub async fn handle_connection(
             drop(locked_socket);
 
             if n == 0 {
-                log_message("Client disconnected unexpectedly");
+                error!("Client disconnected unexpectedly");
                 break;
             }
         }
 
         let command = buffer.trim();
-        log_message(&format!("Received command: {}", command));
+        info!("Received command: {}", command);
+
+        //log_message(&format!("Received command: {}", command));
 
         let parts: Vec<String> = command.split_whitespace().map(String::from).collect();
 
         if parts.is_empty() {
-            log_message("Empty command received, ignoring.");
+            info!("Empty command received, ignoring.");
             continue;
         }
 
@@ -129,41 +140,90 @@ pub async fn handle_connection(
         let args = parts[1..].to_vec();
 
         if let Some(handler) = handlers.get(&cmd) {
-            if cmd == FtpCommand::STOR {
-                if let Err(e) = handler(
+            if cmd == FtpCommand::PASV {
+                let (listener, pasv_response) =
+                    setup_pasv_listener(config.server.pasv_address.parse().unwrap()).await?;
+                let mut writer = socket.lock().await;
+                writer.write_all(pasv_response.as_bytes()).await?;
+
+                // Accept the connection asynchronously
+                let socket_clone = Arc::clone(&socket);
+                let session_clone = Arc::clone(&session);
+                tokio::spawn(async move {
+                    match accept_pasv_connection(listener).await {
+                        Ok(stream) => {
+                            let mut session = session_clone.lock().await;
+                            session.data_stream = Some(Arc::new(Mutex::new(stream)));
+                        }
+                        Err(err) => {
+                            error!("Failed to accept PASV connection: {:?}", err);
+                            send_response(&socket_clone, b"425 Cannot open data connection.\r\n")
+                                .await
+                                .ok();
+                        }
+                    }
+                });
+                continue; // Move to the next iteration since PASV is handled separately
+            }
+
+            let handler_result = if cmd == FtpCommand::STOR || cmd == FtpCommand::RETR {
+                // Execute handler with data_stream
+                handler(
                     Arc::clone(&socket),
                     Arc::clone(&config),
                     Arc::clone(&session),
                     args.join(" "),
+                    data_stream.clone(),
                 )
                 .await
-                {
-                    log_message(&format!("Error handling command {}: {:?}", cmd_str, e));
-                    break;
-                }
             } else {
-                if let Err(e) = handler(
+                // Execute handler without data_stream
+                handler(
                     Arc::clone(&socket),
                     Arc::clone(&config),
                     Arc::clone(&session),
                     args.join(" "),
+                    None,
                 )
                 .await
-                {
-                    log_message(&format!("Error handling command {}: {:?}", cmd_str, e));
-                    break;
-                }
+            };
+
+            // Check for handler errors and reset data_stream
+            if let Err(e) = handler_result {
+                log_message(&format!("Error handling command {}: {:?}", cmd_str, e));
+                data_stream = None; // Reset data_stream after use
             }
         }
     }
     Ok(())
 }
 
+/*
+async fn setup_pasv_listener(address: SocketAddr) -> Result<(TcpListener, String)> {
+    let listener = TcpListener::bind(address).await?;
+    let local_addr = listener.local_addr()?;
+    let ip_string = local_addr.ip().to_string(); // Store the string in a variable
+    let ip_parts: Vec<_> = ip_string.split('.').collect();
+    let pasv_response = format!(
+        "227 Entering Passive Mode ({},{},{},{},{},{}).\r\n",
+        ip_parts[0], ip_parts[1], ip_parts[2], ip_parts[3],
+        (local_addr.port() / 256),
+        (local_addr.port() % 256)
+    );
+    Ok((listener, pasv_response))
+}
+
+
+async fn accept_pasv_connection(listener: TcpListener) -> Result<TcpStream> {
+    let (stream, _) = listener.accept().await?;
+    Ok(stream)
+}
+*/
+
 fn load_banner(path: &str) -> Result<String> {
-    let mut file =
-        File::open(path).with_context(|| format!("Failed to open banner file: {}", path))?;
+    let mut file = File::open(path).context(format!("Failed to open banner file: {}", path))?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)
-        .with_context(|| format!("Failed to read banner file: {}", path))?;
+        .context(format!("Failed to read banner file: {}", path))?;
     Ok(contents)
 }

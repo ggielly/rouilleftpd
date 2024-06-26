@@ -1,8 +1,8 @@
-use crate::session::Session;
 use crate::helpers::{sanitize_input, send_response};
+use crate::session::Session;
 use crate::Config;
 use anyhow::Result;
-use log::{error, info};
+use log::{error, info, warn};
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -27,42 +27,41 @@ use tokio::sync::Mutex;
 /// Result<(), std::io::Error> indicating the success or failure of the operation.
 pub async fn handle_stor_command(
     writer: Arc<Mutex<TcpStream>>,
-    data_stream: Option<Arc<Mutex<TcpStream>>>,
     _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
+    data_stream: Option<Arc<Mutex<TcpStream>>>,
 ) -> Result<(), std::io::Error> {
-    // Sanitize the input argument to prevent directory traversal attacks.
+    if arg.trim().is_empty() {
+        warn!("STOR command received with no arguments");
+        send_response(&writer, b"501 Syntax error in parameters or arguments.\r\n").await?;
+        return Ok(());
+    }
+
     let sanitized_arg = sanitize_input(&arg);
     info!("Received STOR command with argument: {}", sanitized_arg);
 
-    // Construct the file path within the user's current directory.
-    let file_path = {
+    // Corrected file_path construction
+    let (base_path, file_path, resolved_path) = {
         let session = session.lock().await;
-        session
-            .base_path
-            .join(&session.current_dir)
-            .join(&sanitized_arg)
+        let base_path = session.base_path.clone();
+        let file_path = base_path.join(&sanitized_arg);
+        let resolved_path = file_path
+            .canonicalize()
+            .unwrap_or_else(|_| file_path.clone());
+        (base_path, file_path, resolved_path)
     };
-    info!("Constructed file path: {:?}", file_path);
 
-    // Canonicalize the file path to ensure it's within the chroot directory.
-    let base_path = {
-        let session = session.lock().await;
-        session.base_path.clone()
-    };
-    let resolved_path = file_path
-        .canonicalize()
-        .unwrap_or_else(|_| file_path.clone());
+    info!("base_path: {:?}", base_path);
+    info!("file_path: {:?}", file_path);
+    info!("resolved_path: {:?}", resolved_path);
 
-    // Check if the resolved path is within the chroot directory.
     if !resolved_path.starts_with(&base_path) {
         error!("Path is outside of the allowed area: {:?}", resolved_path);
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());
     }
 
-    // Attempt to create the file.
     let mut file = match tokio::fs::File::create(&resolved_path).await {
         Ok(f) => f,
         Err(e) => {
@@ -72,39 +71,38 @@ pub async fn handle_stor_command(
         }
     };
 
-    // Check if the data stream is available
-    let mut data_stream = match data_stream {
-        Some(ref ds) => ds.lock().await,
-        None => {
-            send_response(&writer, b"425 Can't open data connection.\r\n").await?;
-            return Ok(());
-        }
-    };
-
-    // Inform the client that the file status is okay and that the data connection is about to be opened.
     send_response(
         &writer,
         b"150 File status okay; about to open data connection.\r\n",
     )
     .await?;
 
-    // Read data from the data connection and write it to the file.
-    let mut buffer = vec![0; 8192];
-
-    loop {
-        let bytes_read = data_stream.read(&mut buffer).await?;
-        if bytes_read == 0 {
-            break;
+    if let Some(data_stream) = data_stream {
+        let mut data_stream = data_stream.lock().await;
+        let mut buffer = vec![0; 8192];
+        loop {
+            let bytes_read = match data_stream.read(&mut buffer).await {
+                Ok(0) => break,
+                Ok(n) => n,
+                Err(e) => {
+                    error!("Error reading from data stream: {}", e);
+                    send_response(&writer, b"550 Error reading from data connection.\r\n").await?;
+                    return Ok(());
+                }
+            };
+            if let Err(e) = file.write_all(&buffer[..bytes_read]).await {
+                error!("Error writing to file: {}", e);
+                send_response(&writer, b"550 Error writing to file.\r\n").await?;
+                return Ok(());
+            }
         }
-        file.write_all(&buffer[..bytes_read]).await?;
+    } else {
+        error!("Data connection is not established.");
+        send_response(&writer, b"425 Can't open data connection.\r\n").await?;
+        return Ok(());
     }
 
-    // Inform the client that the file transfer was successful and the data connection is being closed.
-    send_response(
-        &writer,
-        b"226 Closing data connection. File transfer successful.\r\n",
-    )
-    .await?;
+    send_response(&writer, b"226 Transfer complete.\r\n").await?;
     info!("File stored successfully: {:?}", resolved_path);
 
     Ok(())
