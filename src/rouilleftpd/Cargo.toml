@@ -24,3 +24,6 @@ sysinfo = "0.21"
 # Remove me one implemented -> CHECK session.rs
 rand = "0.8"
 
+[[bin]]
+name = "rouilleftpd"
+path = "src/main.rs"
