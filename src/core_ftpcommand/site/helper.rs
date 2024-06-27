@@ -1,15 +1,16 @@
 use crate::constants::USERNAME_REGEX;
+use log::error;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use url::Url;
-use log::error;
 
 use crate::constants::*;
-use crate::Config;
 use crate::session::Session;
 use crate::tokio::fs;
+use crate::Config;
+use std::collections::HashMap;
 
 // Load the src/cookies.rs
 use crate::cookies::COOKIE_DEFINITIONS;
@@ -21,7 +22,6 @@ pub async fn respond_with_error(
     let mut writer = writer.lock().await;
     writer.write_all(msg).await
 }
-
 
 /// Sends a success response message to the FTP client.
 ///
@@ -50,7 +50,6 @@ pub async fn respond_with_success(
     writer.write_all(msg).await
 }
 
-
 /// Checks if a string is a valid IPv4 address or hostname.
 ///
 /// # Arguments
@@ -77,7 +76,6 @@ pub fn is_valid_ip_or_hostname(ip: &str) -> bool {
     Url::parse(&format!("http://{}", ip)).is_ok()
 }
 
-
 pub fn is_valid_ident_ip(ident_ip: &str) -> bool {
     let parts: Vec<&str> = ident_ip.split('@').collect();
     if parts.len() != 2 {
@@ -91,7 +89,6 @@ pub fn is_valid_ident_ip(ident_ip: &str) -> bool {
     }
     true
 }
-
 
 /// Validates the username according to the defined rules.
 ///
@@ -110,7 +107,6 @@ pub fn is_valid_username(username: &str) -> bool {
     re.is_match(username)
 }
 
-
 /// Performs a basic validation of the password.
 ///
 /// # Arguments
@@ -123,8 +119,6 @@ pub fn is_valid_username(username: &str) -> bool {
 pub fn is_valid_password(password: &str) -> bool {
     !password.is_empty() // You should implement more robust password checks
 }
-
-
 
 /// Maps flag names to their respective values.
 pub fn get_flag_value(flag_name: &str) -> Option<u8> {
@@ -184,9 +178,9 @@ pub fn get_flag_name(flag_value: u8) -> Option<&'static str> {
     }
 }
 
-
 pub async fn load_statline(config: Arc<Config>) -> Result<String, std::io::Error> {
     let statline_path = format!("{}/ftp-data/text/statline.txt", config.server.chroot_dir);
+
     match fs::read_to_string(statline_path).await {
         Ok(content) => Ok(content),
         Err(e) => {
@@ -196,37 +190,75 @@ pub async fn load_statline(config: Arc<Config>) -> Result<String, std::io::Error
     }
 }
 
-pub async fn replace_cookies(statline: String, session: Arc<Mutex<Session>>) -> String {
-    let mut statline_replaced = statline;
-    let session = session.lock().await;
-    
-    let ul_stat = (0.0, "MB".to_string());
-    let dl_stat = (0.0, "MB".to_string());
-    let speed_stat = (7181.07, "K/s".to_string());
-    let free_space_stat = 973625.0;
-    let section = "DEFAULT".to_string();
-    let credits_stat = (14.6, "MB".to_string());
-    let ratio_stat = "Unlimited".to_string();
-    
-    let replacements = vec![
-        ("%[%.1f]IG%[%s]Y", format!("{:.1}{}", ul_stat.0, ul_stat.1)),
-        ("%[%.1f]IJ%[%s]Y", format!("{:.1}{}", dl_stat.0, dl_stat.1)),
-        ("%[%.2f]A%[%s]V", format!("{:.2}{}", speed_stat.0, speed_stat.1)),
-        ("%[%.0f]FMB", format!("{:.0}MB", free_space_stat)),
-        ("%[%s]b", section),
-        ("%[%.1f]Ic%[%s]Y", format!("{:.1}{}", credits_stat.0, credits_stat.1)),
-        ("%[%s]Ir", ratio_stat),
-    ];
-    
-    for (cookie, value) in replacements {
-        statline_replaced = statline_replaced.replace(cookie, &value);
+pub fn cleanup_cookie_statline(statline: &str, replacements: &HashMap<&str, String>) -> String {
+    let mut statline_replaced = statline.to_string();
+
+    // Iterate through the replacements and replace placeholders with actual values
+    for (placeholder, value) in replacements {
+        statline_replaced = statline_replaced.replace(placeholder, value);
     }
 
     // Remove formatting markers
     statline_replaced = statline_replaced.replace("!e", "");
     statline_replaced = statline_replaced.replace("!g", "");
-    statline_replaced = statline_replaced.replace("[!G", "[");
-    statline_replaced = statline_replaced.replace("]!0", "]");
+    statline_replaced = statline_replaced.replace("!G", "");
+    statline_replaced = statline_replaced.replace("!C", "");
+    statline_replaced = statline_replaced.replace("!0", "");
+    statline_replaced = statline_replaced.replace("!I", "");
+    statline_replaced = statline_replaced.replace("!Z", "");
+    statline_replaced = statline_replaced.replace("!@", "");
 
     statline_replaced
+}
+
+pub async fn cleanup_cookie_site_user<'a>(
+    user_info: &'a HashMap<&str, String>,
+    template: &'a str,
+    username: &'a str,
+) -> String {
+    let mut placeholders = HashMap::new();
+
+    placeholders.insert("%[%-20s]Iu", username.to_string()); // Username
+    placeholders.insert("%[%-20s]IC", "".to_string()); // Created (dummy value)
+    placeholders.insert("%[%-20s]I-", "".to_string()); // Added by (dummy value)
+    placeholders.insert("%[%-20s]I!", "".to_string()); // Expires (dummy value)
+    placeholders.insert(
+        "%[%-19s]Ie",
+        user_info.get("TIME").unwrap_or(&"".to_string()).to_string(),
+    ); // Time On Today
+    placeholders.insert("%[%-24s]I+", "".to_string()); // Last seen (dummy value)
+    placeholders.insert(
+        "%[%-22s]IZ",
+        user_info
+            .get("FLAGS")
+            .unwrap_or(&"".to_string())
+            .to_string(),
+    ); // Flags
+    placeholders.insert("%[%-10s]I@", "".to_string()); // Idle time (dummy value)
+    placeholders.insert(
+        "%[%-61s]I=",
+        user_info
+            .get("RATIO")
+            .unwrap_or(&"".to_string())
+            .to_string(),
+    ); // Ratios
+    placeholders.insert(
+        "%[%-60s]IX",
+        user_info
+            .get("CREDITS")
+            .unwrap_or(&"".to_string())
+            .to_string(),
+    ); // Credits
+    placeholders.insert(
+        "%[%-9d]IL",
+        user_info
+            .get("LOGINS")
+            .unwrap_or(&"".to_string())
+            .to_string(),
+    ); // Total Logins
+    placeholders.insert("%[%-9d]Im", "0".to_string()); // Current Logins (dummy value)
+    placeholders.insert("%[%-9s]IM", "".to_string()); // Max Logins (dummy value)
+    placeholders.insert("%[%-9s]I#", "".to_string()); // From same IP (dummy value)
+
+    cleanup_cookie_statline(template, &placeholders)
 }

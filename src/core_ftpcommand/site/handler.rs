@@ -1,13 +1,13 @@
-use std::sync::Arc; // for Arc
-use tokio::sync::Mutex; // for Mutex
-use tokio::net::TcpStream; // for TcpStream
-use crate::{Config, session::Session}; // for Config and Session
-use log::{info, warn}; // for logging
-use crate::core_ftpcommand::site::site_adduser::handle_adduser_command;
-use crate::core_ftpcommand::site::site_addip::handle_addip_command;
-use crate::core_ftpcommand::site::site_delip::handle_delip_command;
 use crate::core_ftpcommand::site::helper::respond_with_error;
-
+use crate::core_ftpcommand::site::site_addip::handle_addip_command;
+use crate::core_ftpcommand::site::site_adduser::handle_adduser_command;
+use crate::core_ftpcommand::site::site_delip::handle_delip_command;
+use crate::core_ftpcommand::site::site_user::handle_site_user_command;
+use crate::{session::Session, Config}; // for Config and Session
+use log::{info, warn}; // for logging
+use std::sync::Arc; // for Arc
+use tokio::net::TcpStream; // for TcpStream
+use tokio::sync::Mutex; // for Mutex
 
 pub async fn handle_site_command(
     writer: Arc<Mutex<TcpStream>>,
@@ -42,6 +42,16 @@ pub async fn handle_site_command(
         "DELUSER" => {
             info!("Handling SITE DELUSER command with args: {:?}", sub_args);
             handle_delip_command(writer, config, session, sub_args).await
+        }
+        "USER" => {
+            if sub_args.len() == 1 {
+                info!("Handling SITE USER command for user: {:?}", sub_args[0]);
+                handle_site_user_command(writer, config, session, sub_args[0].clone()).await
+            } else {
+                warn!("Invalid arguments for SITE USER command: {:?}", sub_args);
+                respond_with_error(&writer, b"501 Syntax error in parameters or arguments.\r\n")
+                    .await
+            }
         }
         _ => {
             warn!("Unknown SITE subcommand: {}", subcommand);
