@@ -18,7 +18,7 @@ use std::fs;
 use std::io::Write;
 use structopt::StructOpt;
 use tokio;
-
+use crate::ipc::UserRecord;
 pub mod constants;
 
 
@@ -69,6 +69,13 @@ async fn main() -> Result<()> {
     let config = load_config(config_path)?;
 
     let ipc = Ipc::new(config.server.ipc_key.clone());
+     // Example usage
+     let username = "rouilleftpd";
+     let command = "LIST";
+     let download_speed = 512.0; // Example value in KB/s
+     let upload_speed = 9000.0; // Example value in KB/s
+ 
+     handle_command(&ipc, username, command, download_speed, upload_speed).await;
 
     server::run(config, ipc).await?;
 
@@ -81,4 +88,31 @@ fn load_config(path: &str) -> Result<Config> {
     let config = toml::from_str(&config_str)
         .with_context(|| format!("Failed to parse configuration file: {}", path))?;
     Ok(config)
+}
+
+
+
+// Alpha version
+fn update_user_record(ipc: &Ipc, username: &str, command: &str, download_speed: f32, upload_speed: f32) {
+    let mut username_bytes = [0u8; 32];
+    let mut command_bytes = [0u8; 32];
+    username_bytes[..username.len()].copy_from_slice(username.as_bytes());
+    command_bytes[..command.len()].copy_from_slice(command.as_bytes());
+
+    let record = UserRecord {
+        username: username_bytes,
+        command: command_bytes,
+        download_speed,
+        upload_speed,
+    };
+
+    ipc.write_user_record(record);
+}
+
+// Example function that handles a command
+async fn handle_command(ipc: &Ipc, username: &str, command: &str, download_speed: f32, upload_speed: f32) {
+    // Your existing command handling logic
+
+    // Update the user record in shared memory
+    update_user_record(ipc, username, command, download_speed, upload_speed);
 }

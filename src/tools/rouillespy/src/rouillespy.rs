@@ -3,6 +3,9 @@ use std::sync::{Arc, Mutex};
 use std::{env, process};
 use thiserror::Error;
 
+pub mod ipcspy;
+use crate::ipcspy::UserRecord;
+
 #[derive(Debug, Error)]
 pub enum IpcError {
     #[error("Invalid IPC key format")]
@@ -39,6 +42,24 @@ impl Ipc {
         let unique_key = format!("{:08X}", key_num + attempt);
         Ok(unique_key)
     }
+
+    pub fn read_user_records(&self) -> Vec<UserRecord> {
+        let memory = self.memory.lock().unwrap();
+        let mut records = Vec::new();
+
+        let record_size = std::mem::size_of::<UserRecord>();
+        let num_records = memory.len() / record_size;
+
+        for i in 0..num_records {
+            let offset = i * record_size;
+            let record: UserRecord = unsafe {
+                std::ptr::read(memory[offset..].as_ptr() as *const UserRecord)
+            };
+            records.push(record);
+        }
+
+        records
+    }
 }
 
 fn main() {
@@ -49,19 +70,21 @@ fn main() {
     }
 
     let ipc_key = &args[1];
-    match Ipc::new(ipc_key.to_string()) {
-        Ok(ipc) => {
-            let memory = ipc.memory.lock().unwrap();
-            for (i, byte) in memory.iter().enumerate() {
-                print!("{:02X} ", byte);
-                if (i + 1) % 16 == 0 {
-                    println!();
-                }
-            }
-        }
+    let ipc = match Ipc::new(ipc_key.to_string()) {
+        Ok(ipc) => ipc,
         Err(e) => {
-            eprintln!("Error initializing IPC: {}", e);
+            eprintln!("Failed to initialize IPC: {}", e);
             process::exit(1);
         }
+    };
+
+    let records = ipc.read_user_records();
+    for record in records {
+        let username = String::from_utf8_lossy(&record.username).trim_end_matches('\0').to_string();
+        let command = String::from_utf8_lossy(&record.command).trim_end_matches('\0').to_string();
+        println!(
+            "Username: {}, Command: {}, Download Speed: {:.2} KB/s, Upload Speed: {:.2} KB/s",
+            username, command, record.download_speed, record.upload_speed
+        );
     }
 }
