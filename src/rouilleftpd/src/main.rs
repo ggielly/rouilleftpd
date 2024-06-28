@@ -1,3 +1,4 @@
+mod cookies;
 mod core_cli;
 mod core_ftpcommand;
 mod core_log;
@@ -6,9 +7,9 @@ mod helpers;
 mod ipc;
 mod server;
 mod session;
-mod cookies;
 
 use crate::core_cli::Cli;
+use crate::ipc::UserRecord;
 use anyhow::{Context, Result};
 use colored::*;
 use env_logger::{Builder, Env};
@@ -18,9 +19,7 @@ use std::fs;
 use std::io::Write;
 use structopt::StructOpt;
 use tokio;
-use crate::ipc::UserRecord;
 pub mod constants;
-
 
 #[derive(Debug, Deserialize)]
 struct ServerConfig {
@@ -69,13 +68,13 @@ async fn main() -> Result<()> {
     let config = load_config(config_path)?;
 
     let ipc = Ipc::new(config.server.ipc_key.clone());
-     // Example usage
-     let username = "rouilleftpd";
-     let command = "LIST";
-     let download_speed = 512.0; // Example value in KB/s
-     let upload_speed = 9000.0; // Example value in KB/s
- 
-     handle_command(&ipc, username, command, download_speed, upload_speed).await;
+    // Example usage
+    let username = "rouilleftpd";
+    let command = "LIST";
+    let download_speed = 512.0; // Example value in KB/s
+    let upload_speed = 9000.0; // Example value in KB/s
+
+    handle_command(&ipc, username, command, download_speed, upload_speed).await;
 
     server::run(config, ipc).await?;
 
@@ -90,10 +89,14 @@ fn load_config(path: &str) -> Result<Config> {
     Ok(config)
 }
 
-
-
 // Alpha version
-fn update_user_record(ipc: &Ipc, username: &str, command: &str, download_speed: f32, upload_speed: f32) {
+fn update_user_record(
+    ipc: &Ipc,
+    username: &str,
+    command: &str,
+    download_speed: f32,
+    upload_speed: f32,
+) {
     let mut username_bytes = [0u8; 32];
     let mut command_bytes = [0u8; 32];
     username_bytes[..username.len()].copy_from_slice(username.as_bytes());
@@ -110,7 +113,13 @@ fn update_user_record(ipc: &Ipc, username: &str, command: &str, download_speed: 
 }
 
 // Example function that handles a command
-async fn handle_command(ipc: &Ipc, username: &str, command: &str, download_speed: f32, upload_speed: f32) {
+async fn handle_command(
+    ipc: &Ipc,
+    username: &str,
+    command: &str,
+    download_speed: f32,
+    upload_speed: f32,
+) {
     // Your existing command handling logic
 
     // Update the user record in shared memory

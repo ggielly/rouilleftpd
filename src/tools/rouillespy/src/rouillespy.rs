@@ -52,9 +52,8 @@ impl Ipc {
 
         for i in 0..num_records {
             let offset = i * record_size;
-            let record: UserRecord = unsafe {
-                std::ptr::read(memory[offset..].as_ptr() as *const UserRecord)
-            };
+            let record: UserRecord =
+                unsafe { std::ptr::read(memory[offset..].as_ptr() as *const UserRecord) };
             records.push(record);
         }
 
@@ -80,8 +79,12 @@ fn main() {
 
     let records = ipc.read_user_records();
     for record in records {
-        let username = String::from_utf8_lossy(&record.username).trim_end_matches('\0').to_string();
-        let command = String::from_utf8_lossy(&record.command).trim_end_matches('\0').to_string();
+        let username = String::from_utf8_lossy(&record.username)
+            .trim_end_matches('\0')
+            .to_string();
+        let command = String::from_utf8_lossy(&record.command)
+            .trim_end_matches('\0')
+            .to_string();
         println!(
             "Username: {}, Command: {}, Download Speed: {:.2} KB/s, Upload Speed: {:.2} KB/s",
             username, command, record.download_speed, record.upload_speed

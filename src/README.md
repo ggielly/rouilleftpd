@@ -4,10 +4,11 @@
 ## Features
 
 - Configuration via `rouilleftpd.conf` file (TOML syntax)
-- Shared memory for inter-process communication (IPC)
+- Shared memory for inter-process communication (IPC) : rouillespy will help you to monitore the users in console.
 - Asynchronous I/O operations using `tokio`
 - Command-line argument handling
 - Chrooted by default
+- site [args] commands for managing the ftpd : site adduser, site deluser, site user...
 
 
 ## Requirements
@@ -16,13 +17,13 @@
 
 ## Installation
 
-1. Clone the repository:
+1. Clone the repository :
     ```sh
     git clone https://github.com/ggielly/rouilleftpd.git
     cd rouilleftpd
     ```
 
-2. Build the project:
+2. Build the project :
     ```sh
     cargo build --release
     ```
