@@ -8,8 +8,10 @@ edition = "2021"
 log = "0.4"
 tokio = { version = "1", features = ["full"] }
 thiserror = "1.0"
-
-
+eframe = "0.27.2"  # Add eframe for GUI support
+egui = "0.27.2"   # Add egui for GUI support
+clap = { version = "4.4.11", features = ["derive"]}
+env_logger =  "0.11.3"
 
 # Optional: specify binary target
 [[bin]]
