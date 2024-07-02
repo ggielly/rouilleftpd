@@ -1,8 +1,11 @@
 use crate::core_ftpcommand::ftpcommand::FtpCommand;
 use crate::core_ftpcommand::handlers::initialize_command_handlers;
 use crate::core_log::logger::log_message;
+use crate::ipc::update_ipc;
 use crate::session::Session;
 use crate::Config;
+use crate::Ipc;
+
 use anyhow::{Context, Result};
 use log::{error, info};
 use std::fs::File;
@@ -18,14 +21,9 @@ use crate::core_ftpcommand::utils::send_response;
 use crate::core_network::pasv::accept_pasv_connection;
 use crate::core_network::pasv::setup_pasv_listener;
 
-pub async fn start_server(
-    listen_port: u16,
-    config: Arc<Config>,
-    ipc: crate::ipc::Ipc,
-) -> Result<()> {
-    let listener = TcpListener::bind(format!("0.0.0.0:{}", listen_port)).await?;
-    //log_message(&format!("Server listening on port {}", listen_port));
-    info!("Server listening on port {}", listen_port);
+pub async fn start_server(port: u16, config: Arc<Config>, ipc: Arc<Ipc>) -> Result<()> {
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
+    info!("Server listening on port {}", port);
 
     let base_path = PathBuf::from(&config.server.chroot_dir)
         .join(config.server.min_homedir.trim_start_matches('/'))
@@ -42,9 +40,9 @@ pub async fn start_server(
 
         tokio::spawn(async move {
             if let Err(e) = handle_connection(socket, config, session, ipc_clone).await {
-                log_message(&format!("Connection error: {:?}", e));
+                error!("Connection error: {:?}", e);
             }
-            log_message(&format!("Connection closed for {:?}", addr));
+            info!("Connection closed for {:?}", addr);
         });
     }
 }
@@ -53,7 +51,7 @@ pub async fn handle_connection(
     socket: TcpStream,
     config: Arc<Config>,
     session: Arc<Mutex<Session>>,
-    _ipc: crate::ipc::Ipc,
+    ipc: Arc<Ipc>,
 ) -> Result<()> {
     let banner_path = if cfg!(target_os = "windows") {
         "ftp-data/text/banner.txt"
@@ -92,8 +90,6 @@ pub async fn handle_connection(
 
         let command = buffer.trim();
         info!("Received command: {}", command);
-
-        //log_message(&format!("Received command: {}", command));
 
         let parts: Vec<String> = command.split_whitespace().map(String::from).collect();
 
@@ -136,6 +132,14 @@ pub async fn handle_connection(
         };
 
         let args = parts[1..].to_vec();
+
+        // Update IPC with the command and username
+        // Update IPC with the command and username
+        let username = {
+            let session = session.lock().await;
+            session.username.clone().unwrap_or_default()
+        };
+        update_ipc(Arc::clone(&ipc), &username, &cmd_str, 0.0, 0.0);
 
         if let Some(handler) = handlers.get(&cmd) {
             if cmd == FtpCommand::PASV {
@@ -195,28 +199,6 @@ pub async fn handle_connection(
     }
     Ok(())
 }
-
-/*
-async fn setup_pasv_listener(address: SocketAddr) -> Result<(TcpListener, String)> {
-    let listener = TcpListener::bind(address).await?;
-    let local_addr = listener.local_addr()?;
-    let ip_string = local_addr.ip().to_string(); // Store the string in a variable
-    let ip_parts: Vec<_> = ip_string.split('.').collect();
-    let pasv_response = format!(
-        "227 Entering Passive Mode ({},{},{},{},{},{}).\r\n",
-        ip_parts[0], ip_parts[1], ip_parts[2], ip_parts[3],
-        (local_addr.port() / 256),
-        (local_addr.port() % 256)
-    );
-    Ok((listener, pasv_response))
-}
-
-
-async fn accept_pasv_connection(listener: TcpListener) -> Result<TcpStream> {
-    let (stream, _) = listener.accept().await?;
-    Ok(stream)
-}
-*/
 
 fn load_banner(path: &str) -> Result<String> {
     let mut file = File::open(path).context(format!("Failed to open banner file: {}", path))?;

@@ -11,7 +11,7 @@
 /// # Returns
 ///
 /// Result<(), std::io::Error> indicating the success or failure of the operation.
-use tokio::io::{AsyncWriteExt, AsyncWrite};
+use tokio::io::{AsyncWriteExt};
 use tokio::sync::Mutex;
 use std::sync::Arc;
 use log::{info, error};

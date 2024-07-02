@@ -56,7 +56,7 @@ impl Session {
             }
         }
 
-        0.0  // sic(!)
+        0.0 // sic(!)
     }
 
     pub fn upload_stat(&self) -> (f64, &str) {

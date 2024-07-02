@@ -8,6 +8,7 @@ use std::sync::Arc;
 use crate::session::Session;
 use std::path::PathBuf;
 
+
 /// Runs the FTP server with the provided configuration and IPC key.
 ///
 /// This function initializes the server configuration and starts the FTP server,
@@ -21,7 +22,7 @@ use std::path::PathBuf;
 /// # Returns
 ///
 /// Result<(), anyhow::Error> indicating the success or failure of the operation.
-pub async fn run(config: Config, ipc: Ipc) -> Result<()> {
+pub async fn run(config: Config, ipc: Arc<Ipc>) -> Result<()> {
     info!("Starting server with config: {:?}", config);
     info!("IPC Key: {:?}", ipc.ipc_key);
 

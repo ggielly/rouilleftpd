@@ -7,6 +7,7 @@ mod helpers;
 mod ipc;
 mod server;
 mod session;
+mod watchdog;
 
 use crate::core_cli::Cli;
 use crate::ipc::UserRecord;
@@ -17,6 +18,7 @@ use ipc::Ipc;
 use serde::Deserialize;
 use std::fs;
 use std::io::Write;
+use std::sync::Arc;
 use structopt::StructOpt;
 use tokio;
 pub mod constants;
@@ -67,7 +69,8 @@ async fn main() -> Result<()> {
     };
     let config = load_config(config_path)?;
 
-    let ipc = Ipc::new(config.server.ipc_key.clone());
+    // let ipc = Ipc::new(config.server.ipc_key.clone());
+    let ipc = Arc::new(Ipc::new(config.server.ipc_key.clone()));
     // Example usage
     let username = "rouilleftpd";
     let command = "LIST";
@@ -75,6 +78,8 @@ async fn main() -> Result<()> {
     let upload_speed = 9000.0; // Example value in KB/s
 
     handle_command(&ipc, username, command, download_speed, upload_speed).await;
+
+    watchdog::start_watchdog(ipc.clone()); // Start the watchdog process
 
     server::run(config, ipc).await?;
 

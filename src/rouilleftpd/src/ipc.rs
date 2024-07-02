@@ -1,6 +1,6 @@
 use std::num::ParseIntError;
-use thiserror::Error;
 use std::sync::{Arc, Mutex};
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum IpcError {
@@ -16,30 +16,11 @@ pub struct Ipc {
     pub memory: Arc<Mutex<Vec<u8>>>, // Use a Vec<u8> wrapped in Arc<Mutex>> for shared memory
 }
 
-/*impl Ipc {
-    pub fn new(ipc_key: String) -> Self {
-        // Simulate shared memory with a Vec<u8>
-        let memory = Arc::new(Mutex::new(vec![0; 1024]));
-
-        Self { ipc_key, memory }
-    }
-
-    fn generate_unique_key(ipc_key: &str, attempt: u32) -> Result<String, IpcError> {
-        if !ipc_key.starts_with("0x") {
-            return Err(IpcError::InvalidKeyFormat);
-        }
-
-        let key_num = u32::from_str_radix(&ipc_key[2..], 16)?;
-        let unique_key = format!("{:08X}", key_num + attempt);
-        Ok(unique_key)
-    }
-}*/
-
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct UserRecord {
-    pub username: [u8; 32], // Fixed-size array for username (32 bytes)
-    pub command: [u8; 32],  // Fixed-size array for command (32 bytes)
+    pub username: [u8; 32],  // Fixed-size array for username (32 bytes)
+    pub command: [u8; 32],   // Fixed-size array for command (32 bytes)
     pub download_speed: f32, // Download speed
     pub upload_speed: f32,   // Upload speed
 }
@@ -58,7 +39,7 @@ impl UserRecord {
         };
         let download_speed = f32::from_ne_bytes([bytes[64], bytes[65], bytes[66], bytes[67]]);
         let upload_speed = f32::from_ne_bytes([bytes[68], bytes[69], bytes[70], bytes[71]]);
-        
+
         UserRecord {
             username,
             command,
@@ -97,11 +78,35 @@ impl Ipc {
         let memory = self.memory.lock().unwrap();
         let mut records = Vec::new();
 
-        for chunk in memory.chunks_exact(72) { // Each record is 72 bytes
+        for chunk in memory.chunks_exact(72) {
+            // Each record is 72 bytes
             let record = UserRecord::from_bytes(chunk);
             records.push(record);
         }
 
         records
     }
+}
+
+pub fn update_ipc(
+    ipc: Arc<Ipc>,
+    username: &str,
+    command: &str,
+    download_speed: f32,
+    upload_speed: f32,
+) {
+    let mut user_record = UserRecord {
+        username: [0; 32],
+        command: [0; 32],
+        download_speed,
+        upload_speed,
+    };
+
+    // Copy the username and command into the fixed-size arrays
+    let username_bytes = username.as_bytes();
+    let command_bytes = command.as_bytes();
+    user_record.username[..username_bytes.len()].copy_from_slice(username_bytes);
+    user_record.command[..command_bytes.len()].copy_from_slice(command_bytes);
+
+    ipc.write_user_record(user_record);
 }

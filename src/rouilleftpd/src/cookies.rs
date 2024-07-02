@@ -1,5 +1,3 @@
-use tokio::fs;
-use std::collections::HashMap;
 
 // These cookies use a printf-style type indicator, see 'man 3 printf'.
 // Types to be used are: %d = decimal, %f = float and %s = string.

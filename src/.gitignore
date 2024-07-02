@@ -38,4 +38,4 @@ Cargo.lock
 *.vsix
 
 # RouilleFTPd specific
-./site/*
+site-ftp/

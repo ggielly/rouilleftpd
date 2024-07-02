@@ -3,7 +3,3 @@ members = [
     "rouilleftpd",
     "tools/rouillespy",
 ]
-
-
-
-
