@@ -8,11 +8,10 @@ use tokio::{
     io::AsyncWriteExt,
     net::TcpStream,
     sync::Mutex,
-    //fs::Metadata,
+
 };
 
-//use crate::core_ftpcommand::helper::{respond_with_error, send_response};
-
+use crate::helpers::sanitize_input;
 use crate::helpers::send_response;
 
 
@@ -35,7 +34,7 @@ use crate::helpers::send_response;
 /// Result<(), std::io::Error> indicating the success or failure of the operation.
 pub async fn handle_size_command(
     writer: Arc<Mutex<TcpStream>>,
-    config: Arc<Config>,
+    _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
     _data_stream: Option<Arc<Mutex<TcpStream>>>,
@@ -45,43 +44,23 @@ pub async fn handle_size_command(
         return Ok(());
     }
 
-    let file_path = {
+    let sanitized_arg = sanitize_input(&arg);
+    let (base_path, file_path) = {
         let session = session.lock().await;
-        session.base_path.join(arg.trim_start_matches('/'))
+        let base_path = session.base_path.clone();
+        let file_path = base_path.join(&sanitized_arg);
+        (base_path, file_path)
     };
-    let base_path = {
-        let session = session.lock().await;
-        session.base_path.clone()
-    };
-    let resolved_path = file_path
-        .canonicalize()
-        .unwrap_or_else(|_| file_path.clone());
 
-    if !resolved_path.starts_with(&base_path) {
-        error!("Path is outside of the allowed area: {:?}", resolved_path);
-        send_response(&writer, b"550 Requested action not taken (file unavailable or not accessible).\r\n").await?;
+    if !file_path.exists() {
+        send_response(&writer, b"550 File not found.\r\n").await?;
         return Ok(());
     }
 
-    // Get file metadata
-    let metadata = match tokio::fs::metadata(&resolved_path).await {
-        Ok(metadata) => metadata,
-        Err(e) => {
-            error!("Failed to get file metadata: {:?}, error: {}", resolved_path, e);
-            send_response(&writer, b"550 Requested action not taken (file unavailable or not accessible).\r\n").await?;
-            return Ok(());
-        }
-    };
-
-    if !metadata.is_file() {
-        send_response(&writer, b"550 Requested action not taken (not a file).\r\n").await?;
-        return Ok(());
-    }
-    
-    // Send size response
+    let metadata = tokio::fs::metadata(&file_path).await?;
     let file_size = metadata.len();
-    info!("File size for {:?} is {}", resolved_path, file_size);
-    send_response(&writer, format!("213 {}\r\n", file_size).as_bytes()).await?;
 
+    let response = format!("213 {}\r\n", file_size);
+    send_response(&writer, response.as_bytes()).await?;
     Ok(())
 }

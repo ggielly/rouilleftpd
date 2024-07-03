@@ -30,7 +30,7 @@ pub async fn handle_stor_command(
     _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
-    _data_stream: Option<Arc<Mutex<TcpStream>>>,
+    _data_stream: Option<Arc<Mutex<TcpStream>>>, // Ignore this parameter
 ) -> Result<(), std::io::Error> {
     if arg.trim().is_empty() {
         warn!("STOR command received with no arguments");
@@ -88,7 +88,7 @@ pub async fn handle_stor_command(
         let mut data_stream = data_stream.lock().await;
         info!("Data stream locked successfully");
 
-        let mut buffer = vec![0; 8192];
+        let mut buffer = vec![0; 131072]; // Increased buffer size to 64 KB
         loop {
             info!("Reading from data stream...");
             let bytes_read = match data_stream.read(&mut buffer).await {

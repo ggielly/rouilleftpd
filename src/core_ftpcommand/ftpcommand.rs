@@ -50,7 +50,7 @@ impl FtpCommand {
             "SYST" => Some(FtpCommand::SYST),
             "TYPE" => Some(FtpCommand::TYPE),
             "CDUP" => Some(FtpCommand::CDUP),
-            "SIZE" => Some(FtpCommand::CDUP),
+            "SIZE" => Some(FtpCommand::SIZE),
             
             // Add more commands here !
             _ => None,

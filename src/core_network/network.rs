@@ -122,6 +122,7 @@ pub async fn handle_connection(
             "PORT" => FtpCommand::PORT,
             "PASV" => FtpCommand::PASV,
             "TYPE" => FtpCommand::TYPE,
+            "SIZE" => FtpCommand::SIZE,
             _ => {
                 let mut socket = socket.lock().await;
                 socket
