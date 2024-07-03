@@ -7,9 +7,9 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
-toml = "0.5"
+toml = "0.8.14"
 log = "0.4"
-env_logger = "0.9"
+env_logger = "0.11.3"
 shared_memory = "0.12"
 thiserror = "1.0"
 structopt = "0.3"
@@ -19,7 +19,7 @@ colored = "2.0"
 regex = "1"
 validator = "0.18"
 url = "2.2"
-sysinfo = "0.21"
+sysinfo = "0.21.1"
 
 # Remove me one implemented -> CHECK session.rs
 rand = "0.8"

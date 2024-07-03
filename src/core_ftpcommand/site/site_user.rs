@@ -6,7 +6,7 @@ use crate::{session::Session, Config};
 use crate::constants::DELETED;
 use std::{
     fs::{self},
-    io::{Read},
+    io::Read,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -17,7 +17,7 @@ const MIN_SITE_USER_ARGS: usize = 1;
 pub async fn handle_site_user_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
-    session: Arc<Mutex<Session>>,
+    _session: Arc<Mutex<Session>>,
     arg: String,
 ) -> Result<(), std::io::Error> {
     let args: Vec<&str> = arg.split_whitespace().collect();
@@ -25,7 +25,7 @@ pub async fn handle_site_user_command(
         list_all_users(writer, config).await
     } else {
         let username = args[0].to_string();
-        show_user_info(writer, config, session, &username).await
+        show_user_info(writer, config, _session, &username).await
     }
 }
 
@@ -59,7 +59,7 @@ async fn list_all_users(
 async fn show_user_info(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
-    session: Arc<Mutex<Session>>,
+    _session: Arc<Mutex<Session>>,
     username: &str,
 ) -> Result<(), std::io::Error> {
     let user_file_path = PathBuf::from(&config.server.chroot_dir)

@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 use std::sync::Arc;
-use sysinfo::{DiskExt, System, SystemExt};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
+use std::collections::HashMap;
+
+use sysinfo::{System, SystemExt, DiskExt};
 
 /// DEBUG - REMOVE ME ///
 ///
@@ -81,5 +83,47 @@ impl Session {
 
     pub fn ratio(&self) -> &str {
         "Unlimited" // Example value, replace with actual logic
+    }
+
+
+    pub fn get_disk_info(&self) -> Vec<(String, u64, u64)> {
+        let mut disks_info = Vec::new();
+        let sys = System::new_all();
+        for disk in sys.disks() {
+            disks_info.push((
+                disk.name().to_string_lossy().to_string(),
+                disk.total_space(),
+                disk.available_space(),
+            ));
+        }
+        disks_info
+    }
+}
+
+pub struct SessionManager {
+    sessions: HashMap<String, Session>,
+    system: System,
+}
+
+impl SessionManager {
+    pub fn new() -> Self {
+        let system = System::new_all(); // Initialize with all available system information
+        SessionManager {
+            sessions: HashMap::new(),
+            system,
+        }
+    }
+
+    pub fn log_disk_info(&self) {
+        for disk in self.system.disks() {
+            println!("Disk {:?}: {:?}", disk.type_(), disk.name());
+        }
+    }
+    pub fn get_session(&self, id: &str) -> Option<&Session> {
+        self.sessions.get(id)
+    }
+
+    pub fn create_session(&mut self, id: String, base_path: PathBuf) -> &mut Session {
+        self.sessions.entry(id.clone()).or_insert_with(|| Session::new(base_path))
     }
 }

@@ -1,3 +1,4 @@
+mod constants;
 mod cookies;
 mod core_cli;
 mod core_ftpcommand;
@@ -10,18 +11,19 @@ mod session;
 mod watchdog;
 
 use crate::core_cli::Cli;
-use crate::ipc::UserRecord;
-use anyhow::{Context, Result};
+use crate::helpers::handle_command;
+use crate::helpers::load_config;
+
+use anyhow::Result;
 use colored::*;
 use env_logger::{Builder, Env};
 use ipc::Ipc;
 use serde::Deserialize;
-use std::fs;
+use std::sync::Mutex;
 use std::io::Write;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio;
-pub mod constants;
 
 #[derive(Debug, Deserialize)]
 struct ServerConfig {
@@ -67,10 +69,22 @@ async fn main() -> Result<()> {
     } else {
         args.config.as_str()
     };
-    let config = load_config(config_path)?;
 
-    // let ipc = Ipc::new(config.server.ipc_key.clone());
-    let ipc = Arc::new(Ipc::new(config.server.ipc_key.clone()));
+    let config: Config = load_config(config_path)?;
+
+    // Handle the Result<Ipc, _> from Ipc::new
+    let ipc: Arc<Ipc> = match Ipc::new(config.server.ipc_key.clone()) {
+        Ok(instance) => Arc::new(instance),
+        Err(e) => {
+            eprintln!("Failed to create IPC: {}", e);
+            // Create a dummy IPC instance with an empty key if there's an error
+            Arc::new(Ipc {
+                ipc_key: String::new(),
+                memory: Arc::new(Mutex::new(Vec::new())), // Empty shared memory
+            })
+        }
+    };
+
     // Example usage
     let username = "rouilleftpd";
     let command = "LIST";
@@ -84,49 +98,4 @@ async fn main() -> Result<()> {
     server::run(config, ipc).await?;
 
     Ok(())
-}
-
-fn load_config(path: &str) -> Result<Config> {
-    let config_str = fs::read_to_string(path)
-        .with_context(|| format!("Failed to read configuration file: {}", path))?;
-    let config = toml::from_str(&config_str)
-        .with_context(|| format!("Failed to parse configuration file: {}", path))?;
-    Ok(config)
-}
-
-// Alpha version
-fn update_user_record(
-    ipc: &Ipc,
-    username: &str,
-    command: &str,
-    download_speed: f32,
-    upload_speed: f32,
-) {
-    let mut username_bytes = [0u8; 32];
-    let mut command_bytes = [0u8; 32];
-    username_bytes[..username.len()].copy_from_slice(username.as_bytes());
-    command_bytes[..command.len()].copy_from_slice(command.as_bytes());
-
-    let record = UserRecord {
-        username: username_bytes,
-        command: command_bytes,
-        download_speed,
-        upload_speed,
-    };
-
-    ipc.write_user_record(record);
-}
-
-// Example function that handles a command
-async fn handle_command(
-    ipc: &Ipc,
-    username: &str,
-    command: &str,
-    download_speed: f32,
-    upload_speed: f32,
-) {
-    // Your existing command handling logic
-
-    // Update the user record in shared memory
-    update_user_record(ipc, username, command, download_speed, upload_speed);
 }

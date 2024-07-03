@@ -1,6 +1,7 @@
 use std::num::ParseIntError;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
+use crate::helpers::UserRecord;
 
 #[derive(Debug, Error)]
 pub enum IpcError {
@@ -16,63 +17,46 @@ pub struct Ipc {
     pub memory: Arc<Mutex<Vec<u8>>>, // Use a Vec<u8> wrapped in Arc<Mutex>> for shared memory
 }
 
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct UserRecord {
-    pub username: [u8; 32],  // Fixed-size array for username (32 bytes)
-    pub command: [u8; 32],   // Fixed-size array for command (32 bytes)
-    pub download_speed: f32, // Download speed
-    pub upload_speed: f32,   // Upload speed
-}
-
-impl UserRecord {
-    fn from_bytes(bytes: &[u8]) -> Self {
-        let username = {
-            let mut array = [0u8; 32];
-            array.copy_from_slice(&bytes[0..32]);
-            array
-        };
-        let command = {
-            let mut array = [0u8; 32];
-            array.copy_from_slice(&bytes[32..64]);
-            array
-        };
-        let download_speed = f32::from_ne_bytes([bytes[64], bytes[65], bytes[66], bytes[67]]);
-        let upload_speed = f32::from_ne_bytes([bytes[68], bytes[69], bytes[70], bytes[71]]);
-
-        UserRecord {
-            username,
-            command,
-            download_speed,
-            upload_speed,
-        }
-    }
-
-    fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(&self.username);
-        bytes.extend_from_slice(&self.command);
-        bytes.extend_from_slice(&self.download_speed.to_ne_bytes());
-        bytes.extend_from_slice(&self.upload_speed.to_ne_bytes());
-        bytes
-    }
-}
 
 impl Ipc {
-    pub fn new(ipc_key: String) -> Self {
+    /* pub fn new(ipc_key: String) -> Self {
         // Simulate shared memory with a Vec<u8>
         let memory = Arc::new(Mutex::new(vec![0; 1024])); // Adjust size as needed
 
         Self { ipc_key, memory }
+    }*/
+
+    pub fn new(ipc_key: String) -> Result<Self, String> {
+        // Example implementation of creating a new Ipc instance
+        if ipc_key.is_empty() {
+            Err("IPC key is empty".to_string())
+        } else {
+            Ok(Ipc {
+                ipc_key,
+                memory: Arc::new(Mutex::new(Vec::new())),
+            })
+        }
     }
 
     pub fn write_user_record(&self, record: UserRecord) {
         let mut memory = self.memory.lock().unwrap();
         let bytes = record.to_bytes();
+        
+        // Ensure the memory vector is large enough
+        if memory.len() < bytes.len() {
+            eprintln!(
+                "Memory is too small: the len is {} but required len is {}. Resizing the memory.",
+                memory.len(),
+                bytes.len()
+            );
+            memory.resize(bytes.len(), 0);
+        }
+    
         for (i, &byte) in bytes.iter().enumerate() {
             memory[i] = byte;
         }
     }
+    
 
     pub fn read_user_records(&self) -> Vec<UserRecord> {
         let memory = self.memory.lock().unwrap();
