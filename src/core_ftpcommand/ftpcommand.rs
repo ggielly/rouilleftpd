@@ -21,7 +21,8 @@ pub enum FtpCommand {
     ALLO,
     SYST,
     TYPE,
-    CDUP, //
+    CDUP,
+    SIZE, //
 }
 
 impl FtpCommand {
@@ -49,6 +50,8 @@ impl FtpCommand {
             "SYST" => Some(FtpCommand::SYST),
             "TYPE" => Some(FtpCommand::TYPE),
             "CDUP" => Some(FtpCommand::CDUP),
+            "SIZE" => Some(FtpCommand::CDUP),
+            
             // Add more commands here !
             _ => None,
         }

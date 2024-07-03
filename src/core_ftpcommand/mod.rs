@@ -20,6 +20,7 @@ pub mod stor;
 pub mod syst;
 pub mod type_; // TYPE is a reserved word, so lets use _
 pub mod user;
+pub mod size;
 
 // The utils and common functions are here
 pub mod utils;

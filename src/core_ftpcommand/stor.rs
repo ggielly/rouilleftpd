@@ -30,7 +30,7 @@ pub async fn handle_stor_command(
     _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
-    data_stream: Option<Arc<Mutex<TcpStream>>>,
+    _data_stream: Option<Arc<Mutex<TcpStream>>>,
 ) -> Result<(), std::io::Error> {
     if arg.trim().is_empty() {
         warn!("STOR command received with no arguments");
@@ -49,6 +49,7 @@ pub async fn handle_stor_command(
         let resolved_path = file_path
             .canonicalize()
             .unwrap_or_else(|_| file_path.clone());
+
         (base_path, file_path, resolved_path)
     };
 
@@ -77,10 +78,19 @@ pub async fn handle_stor_command(
     )
     .await?;
 
+    let data_stream = {
+        let session = session.lock().await;
+        session.data_stream.clone() // Clone the data stream to use it
+    };
+
     if let Some(data_stream) = data_stream {
+        info!("Attempting to lock data stream...");
         let mut data_stream = data_stream.lock().await;
+        info!("Data stream locked successfully");
+
         let mut buffer = vec![0; 8192];
         loop {
+            info!("Reading from data stream...");
             let bytes_read = match data_stream.read(&mut buffer).await {
                 Ok(0) => break,
                 Ok(n) => n,
@@ -90,11 +100,15 @@ pub async fn handle_stor_command(
                     return Ok(());
                 }
             };
+            info!("Read {} bytes from data stream", bytes_read);
+
+            info!("Writing to file...");
             if let Err(e) = file.write_all(&buffer[..bytes_read]).await {
                 error!("Error writing to file: {}", e);
                 send_response(&writer, b"550 Error writing to file.\r\n").await?;
                 return Ok(());
             }
+            info!("Wrote {} bytes to file", bytes_read);
         }
     } else {
         error!("Data connection is not established.");
