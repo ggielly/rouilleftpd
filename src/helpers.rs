@@ -8,28 +8,11 @@ use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
 /// Sanitizes input to prevent directory traversal attacks.
-///
-/// # Arguments
-///
-/// * `input` - The input string to sanitize.
-///
-/// # Returns
-///
-/// A sanitized string.
 pub fn sanitize_input(input: &str) -> String {
     input.replace("../", "").replace("..\\", "")
 }
 
 /// Sends a response to the client.
-///
-/// # Arguments
-///
-/// * `writer` - A shared, locked TCP stream for writing responses to the client.
-/// * `message` - The message to send.
-///
-/// # Returns
-///
-/// Result<(), std::io::Error> indicating the success or failure of the operation.
 pub async fn send_response(
     writer: &Arc<Mutex<TcpStream>>,
     message: &[u8],
@@ -49,9 +32,12 @@ pub fn update_user_record(
 ) {
     let mut username_bytes = [0u8; 32];
     let mut command_bytes = [0u8; 32];
+    
+    // Copy the username and command into the fixed-size arrays
     username_bytes[..username.len()].copy_from_slice(username.as_bytes());
     command_bytes[..command.len()].copy_from_slice(command.as_bytes());
 
+    // Create a new UserRecord instance with the provided data
     let record = UserRecord {
         username: username_bytes,
         command: command_bytes,
@@ -59,7 +45,15 @@ pub fn update_user_record(
         upload_speed,
     };
 
+    // Debug output before writing
+    eprintln!("Creating user record: {:?}", record);
+
+    // Write the UserRecord instance to the shared memory
     ipc.write_user_record(record);
+
+    // Ensure the write operation
+    eprintln!("User record updated: {:?}", record);
+    eprintln!("Shared memory: {:?}", ipc.memory);
 }
 
 // Example function that handles a command
@@ -89,9 +83,11 @@ pub fn load_config(path: &str) -> Result<Config> {
         .with_context(|| format!("Failed to read configuration file: {}", path))?;
     let config: Config = toml::from_str(&config_str)
         .with_context(|| format!("Failed to parse configuration file: {}", path))?;
+
+    eprintln!("Loaded config: {:?}", config);
+
     Ok(config)
 }
-
 async fn read_config(path: &str) -> Result<String> {
     let config_str = tokio::fs::read_to_string(path)
         .await
