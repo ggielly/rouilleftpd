@@ -11,7 +11,7 @@ use tokio::{net::TcpStream, sync::Mutex};
 
 use crate::core_ftpcommand::site::helper::{respond_with_error, respond_with_success, is_valid_ident_ip};
 
-pub async fn handle_addip_command(
+pub async fn handle_site_addip_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
     _session: Arc<Mutex<Session>>, // Session not used in this command

@@ -30,7 +30,7 @@ use crate::core_ftpcommand::site::helper::{
 /// # Returns
 ///
 /// Returns `Ok(())` on success, or an `std::io::Error` on failure.
-pub async fn handle_adduser_command(
+pub async fn handle_site_adduser_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
     _session: Arc<Mutex<Session>>, // Session not used in this command

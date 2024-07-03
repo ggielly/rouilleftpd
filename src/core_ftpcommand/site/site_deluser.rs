@@ -28,7 +28,7 @@ const MIN_DELUSER_ARGS: usize = 1;
 /// # Returns
 ///
 /// Returns `Ok(())` on success, or an `std::io::Error` on failure.
-pub async fn handle_deluser_command(
+pub async fn handle_site_deluser_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
     _session: Arc<Mutex<Session>>,

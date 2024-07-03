@@ -4,7 +4,7 @@ use log::{info, warn};
 use std::{
     fs::{self, OpenOptions},
     io::{Read, Write},
-    path::{PathBuf},
+    path::PathBuf,
     sync::Arc,
 };
 use tokio::{net::TcpStream, sync::Mutex};
@@ -13,7 +13,7 @@ use crate::core_ftpcommand::site::helper::{
     respond_with_error, respond_with_success,
 };
 
-pub async fn handle_delip_command(
+pub async fn handle_site_delip_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
     _session: Arc<Mutex<Session>>,
