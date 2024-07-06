@@ -1,6 +1,6 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ServerConfig {
     pub listen_port: u16,
     pub pasv_address: String,
@@ -11,7 +11,7 @@ pub struct ServerConfig {
     pub download_buffer_size: Option<usize>, // Optional to allow default value
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     pub server: ServerConfig,
 }

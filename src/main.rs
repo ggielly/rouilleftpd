@@ -16,6 +16,8 @@ use crate::core_cli::Cli;
 use crate::helpers::handle_command;
 use crate::helpers::load_config;
 
+use crate::constants::DEFAULT_CONFIG_PATH;
+
 use anyhow::Result;
 use colored::*;
 use env_logger::{Builder, Env};
@@ -45,11 +47,7 @@ async fn main() -> Result<()> {
         })
         .init();
 
-    let default_config_path = if cfg!(target_os = "windows") {
-        "C:\\src\\rouilleFTPd\\rouilleftpd\\etc\\rouilleftpd.conf"
-    } else {
-        "/etc/rouilleftpd.conf"
-    };
+    let default_config_path: &str = DEFAULT_CONFIG_PATH;
 
     let config_path = if args.config.is_empty() {
         default_config_path

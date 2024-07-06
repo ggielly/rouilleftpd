@@ -11,6 +11,8 @@ pub const MAX_ADDIP_IPS: usize = 10;
 pub const MIN_DELIP_ARGS: usize = 2;
 pub const MAX_DELIP_IPS: usize = 10;
 
+pub const DEFAULT_CONFIG_PATH : &str ="/etc/rouilleftpd.conf";
+
 
 /*
   Flagname       	Flag	Description

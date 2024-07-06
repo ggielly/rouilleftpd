@@ -1,6 +1,7 @@
 //use crate::tokio::fs;
 use crate::{Config, Ipc};
 use anyhow::{Context, Result};
+use log::info;
 use std::fs;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -94,6 +95,23 @@ async fn read_config(path: &str) -> Result<String> {
         .map_err(|e| anyhow::Error::new(e))
         .with_context(|| format!("Failed to read configuration file: {}", path))?;
     Ok(config_str)
+}
+
+// Helper function to log configuration options
+pub fn log_config(config: &Config) {
+    info!("  Listen Port: {}", config.server.listen_port);
+    info!("  PASV Address: {}", config.server.pasv_address);
+    info!("  IPC Key: {}", config.server.ipc_key);
+    info!("  Chroot Directory: {}", config.server.chroot_dir);
+    info!("  Minimum Home Directory: {}", config.server.min_homedir);
+    info!(
+        "  Upload Buffer Size: {} KB",
+        config.server.upload_buffer_size.unwrap_or(256 * 1024) / 1024
+    );
+    info!(
+        "  Download Buffer Size: {} KB",
+        config.server.download_buffer_size.unwrap_or(256 * 1024) / 1024
+    );
 }
 
 #[repr(C)]

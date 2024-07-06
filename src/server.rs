@@ -1,12 +1,12 @@
 use crate::core_network::network;
+use crate::helpers::log_config;
 use crate::ipc::Ipc;
+use crate::session::Session;
 use crate::Config;
 use anyhow::Result;
 use log::{error, info};
-use std::sync::Arc;
-
-use crate::session::Session;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 /// Runs the FTP server with the provided configuration and IPC key.
 ///
@@ -22,9 +22,12 @@ use std::path::PathBuf;
 ///
 /// Result<(), anyhow::Error> indicating the success or failure of the operation.
 pub async fn run(config: Config, ipc: Arc<Ipc>) -> Result<()> {
-    info!("Starting server with config: {:?}", config);
-    info!("IPC Key: {:?}", ipc.ipc_key);
+    // Log each configuration option on a new line
+    info!("Starting server with the following configuration:");
+    log_config(&config);
 
+    // Log IPC key separately as it's not part of the config struct
+    info!("IPC Key: {:?}", ipc.ipc_key);
     // Start the FTP server
     match network::start_server(config.server.listen_port, Arc::new(config), ipc).await {
         Ok(_) => info!("Server started successfully."),
