@@ -1,19 +1,12 @@
 // core_ftpcommand/size.rs
 
-use crate::{Config, session::Session};
-use log::info;
-use log::{error, Metadata};
-use std::sync::Arc;
-use tokio::{
-    io::AsyncWriteExt,
-    net::TcpStream,
-    sync::Mutex,
+use crate::{session::Session, Config};
 
-};
+use std::sync::Arc;
+use tokio::{net::TcpStream, sync::Mutex};
 
 use crate::helpers::sanitize_input;
 use crate::helpers::send_response;
-
 
 /// Handles the SIZE (File Size) FTP command.
 ///

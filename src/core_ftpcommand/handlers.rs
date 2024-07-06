@@ -29,6 +29,15 @@ pub fn initialize_command_handlers() -> HashMap<FtpCommand, Arc<CommandHandler>>
     let mut handlers: HashMap<FtpCommand, Arc<CommandHandler>> = HashMap::new();
 
     handlers.insert(
+        FtpCommand::MDTM,
+        Arc::new(Box::new(|writer, config, session, arg, _data_stream| {
+            Box::pin(crate::core_ftpcommand::mdtm::handle_mdtm_command(
+                writer, config, session, arg,
+            ))
+        })),
+    );
+
+    handlers.insert(
         FtpCommand::SIZE,
         Arc::new(Box::new(|writer, config, session, arg, data_stream| {
             Box::pin(crate::core_ftpcommand::size::handle_size_command(
