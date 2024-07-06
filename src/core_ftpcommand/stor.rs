@@ -14,17 +14,7 @@ use tokio::sync::Mutex;
 /// The function ensures the file is within the allowed chroot area, sanitizes inputs to prevent directory traversal attacks,
 /// and sends appropriate responses back to the FTP client.
 ///
-/// # Arguments
 ///
-/// * `writer` - A shared, locked TCP stream for writing responses to the client.
-/// * `data_stream` - The data connection for receiving the file data.
-/// * `config` - A shared server configuration.
-/// * `session` - A shared, locked session containing the user's current state.
-/// * `arg` - The name of the file to be stored.
-///
-/// # Returns
-///
-/// Result<(), std::io::Error> indicating the success or failure of the operation.
 pub async fn handle_stor_command(
     writer: Arc<Mutex<TcpStream>>,
     _config: Arc<Config>,

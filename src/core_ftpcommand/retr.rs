@@ -1,39 +1,21 @@
-use crate::helpers::{sanitize_input, send_response};
-use crate::session::Session;
-use crate::Config;
-use anyhow::Result;
+use crate::{session::Session, Config};
 use log::{error, info, warn};
-use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
-use tokio::sync::Mutex;
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt, AsyncWriteExt, Result},
+    net::TcpStream,
+    sync::Mutex,
+};
 
-/// Handles the RETR (Retrieve) FTP command.
-///
-/// This function retrieves a file from the server and sends its contents to the client.
-/// The function ensures the file is within the allowed chroot area, sanitizes inputs to
-/// prevent directory traversal attacks, and sends appropriate responses back to the FTP client.
-///
-/// # Arguments
-///
-/// * `writer` - A shared, locked TCP stream for writing responses to the client.
-/// * `data_stream` - A shared, locked TCP stream for the data connection.
-/// * `config` - A shared server configuration.
-/// * `session` - A shared, locked session containing the user's current state.
-/// * `arg` - The name of the file to retrieve.
-///
-/// # Returns
-///
-/// Result<(), std::io::Error> indicating the success or failure of the operation.
+use crate::helpers::{sanitize_input, send_response};
+
 pub async fn handle_retr_command(
     writer: Arc<Mutex<TcpStream>>,
     _config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
-    data_stream: Option<Arc<Mutex<TcpStream>>>,
-) -> Result<(), std::io::Error> {
+) -> Result<()> {
     if arg.trim().is_empty() {
         warn!("RETR command received with no arguments");
         send_response(&writer, b"501 Syntax error in parameters or arguments.\r\n").await?;
@@ -41,27 +23,16 @@ pub async fn handle_retr_command(
     }
 
     let sanitized_arg = sanitize_input(&arg);
-    let file_path = {
-        let session = session.lock().await;
-        session.base_path.join(&session.current_dir).join(&sanitized_arg)
-    };
-    info!("Constructed file path: {:?}", file_path);
+    info!("Received RETR command with argument: {}", sanitized_arg);
 
-    // Ensure the path is relative
-    let file_path = if file_path.is_absolute() {
-        PathBuf::from(&sanitized_arg)
-    } else {
-        file_path
-    };
-
-    let (base_path, resolved_path) = {
+    let resolved_path = {
         let session = session.lock().await;
         let base_path = session.base_path.clone();
-        let resolved_path = base_path.join(&file_path).canonicalize().unwrap_or_else(|_| file_path.clone());
-        (base_path, resolved_path)
+        let file_path = base_path.join(&sanitized_arg);
+        file_path.canonicalize().unwrap_or_else(|_| file_path)
     };
 
-    if !resolved_path.starts_with(&base_path) {
+    if !resolved_path.starts_with(&resolved_path) {
         error!("Path is outside of the allowed area: {:?}", resolved_path);
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());
@@ -70,41 +41,44 @@ pub async fn handle_retr_command(
     let mut file = match File::open(&resolved_path).await {
         Ok(f) => f,
         Err(e) => {
-            error!("File not found or could not be opened: {:?}, error: {}", resolved_path, e);
-            send_response(&writer, b"550 File not found.\r\n").await?;
+            error!("Failed to open file: {:?}, error: {}", resolved_path, e);
+            send_response(&writer, b"550 Failed to open file.\r\n").await?;
             return Ok(());
         }
     };
 
-    send_response(&writer, b"150 Opening data connection.\r\n").await?;
-    info!("Sending file: {:?}", resolved_path);
+    send_response(
+        &writer,
+        b"150 File status okay; about to open data connection.\r\n",
+    )
+    .await?;
+
+    let data_stream = {
+        let session = session.lock().await;
+        session.data_stream.clone()
+    };
 
     if let Some(data_stream) = data_stream {
         let mut data_stream = data_stream.lock().await;
-        let mut buffer = vec![0; 8192];
-        loop {
-            let bytes_read = match file.read(&mut buffer).await {
-                Ok(0) => break,
-                Ok(n) => n,
-                Err(e) => {
-                    error!("Error reading file: {}", e);
-                    send_response(&writer, b"550 Error reading file.\r\n").await?;
-                    return Ok(());
-                }
-            };
+
+        let mut buffer = vec![0; 65536]; // Larger buffer size (64 KB)
+        while let Ok(bytes_read) = file.read(&mut buffer).await {
+            if bytes_read == 0 {
+                break; // End of file
+            }
+
             if let Err(e) = data_stream.write_all(&buffer[..bytes_read]).await {
-                error!("Error sending file to client: {}", e);
-                return Ok(());
+                error!("Error writing to data stream: {}", e);
+                return Err(e);
             }
         }
+
+        send_response(&writer, b"226 Transfer complete.\r\n").await?;
+        info!("File transferred successfully: {:?}", resolved_path);
     } else {
         error!("Data connection is not established.");
         send_response(&writer, b"425 Can't open data connection.\r\n").await?;
-        return Ok(());
     }
-
-    send_response(&writer, b"226 Transfer complete.\r\n").await?;
-    info!("File transfer completed successfully: {:?}", resolved_path);
 
     Ok(())
 }
