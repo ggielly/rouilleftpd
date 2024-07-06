@@ -1,15 +1,11 @@
 use crate::Config;
-use anyhow::Result;
-use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
-use tokio::net::TcpStream;
-use tokio::sync::Mutex;
 
-/// Sanitizes the input argument to prevent directory traversal attacks.
-pub fn sanitize_input(arg: &str) -> String {
-    arg.trim_start_matches('/').replace("\"", "\\\"")
-}
+use std::path::PathBuf;
+
+
+
+
+
 
 /// Constructs the directory path within the user's current directory and the server's chroot directory.
 pub fn construct_path(config: &Config, current_dir: &str, sanitized_arg: &str) -> PathBuf {
@@ -27,15 +23,4 @@ pub fn construct_path(config: &Config, current_dir: &str, sanitized_arg: &str) -
         .join(new_dir_str);
 
     dir_path
-}
-
-/// Sends a response message to the client via the writer.
-pub async fn send_response(
-    writer: &Arc<Mutex<TcpStream>>,
-    message: &[u8],
-) -> Result<(), std::io::Error> {
-    let mut writer = writer.lock().await;
-    writer.write_all(message).await?;
-    writer.flush().await?;
-    Ok(())
 }

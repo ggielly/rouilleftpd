@@ -38,7 +38,7 @@ pub async fn handle_size_command(
     }
 
     let sanitized_arg = sanitize_input(&arg);
-    let (base_path, file_path) = {
+    let (_base_path, file_path) = {
         let session = session.lock().await;
         let base_path = session.base_path.clone();
         let file_path = base_path.join(&sanitized_arg);

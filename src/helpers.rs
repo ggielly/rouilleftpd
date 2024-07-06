@@ -1,18 +1,23 @@
 //use crate::tokio::fs;
 use crate::{Config, Ipc};
 use anyhow::{Context, Result};
+use log::error;
 use log::info;
 use std::fs;
+use std::fs::File;
+use std::io::Read;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
-/// Sanitizes input to prevent directory traversal attacks.
+/// Sanitizes input to prevent directory traversal attacks and ensure paths are relative.
 pub fn sanitize_input(input: &str) -> String {
-    input.replace("../", "").replace("..\\", "")
+    // Remove directory traversal sequences
+    let sanitized_input = input.replace("../", "").replace("..\\", "");
+    // Remove any leading slashes
+    sanitized_input.trim_start_matches('/').to_string()
 }
-
 /// Sends a response to the client.
 pub async fn send_response(
     writer: &Arc<Mutex<TcpStream>>,
@@ -71,13 +76,6 @@ pub async fn handle_command(
     update_user_record(ipc, username, command, download_speed, upload_speed);
 }
 
-pub fn load_banner(path: &str) -> Result<String> {
-    let config_str = fs::read_to_string(path)
-        .map_err(|e| anyhow::Error::new(e))
-        .with_context(|| format!("Failed to read configuration file: {}", path))?;
-    Ok(config_str)
-}
-
 pub fn load_config(path: &str) -> Result<Config> {
     let config_str = fs::read_to_string(path)
         .map_err(|e| anyhow::Error::new(e))
@@ -112,6 +110,25 @@ pub fn log_config(config: &Config) {
         "  Download Buffer Size: {} KB",
         config.server.download_buffer_size.unwrap_or(256 * 1024) / 1024
     );
+}
+
+pub fn load_banner(path: &str) -> Result<String> {
+    // Attempt to read the file contents directly
+    let config_str = fs::read_to_string(path)
+        .map_err(|e| {
+            error!("Failed to read banner file: {}: {}", path, e);
+            anyhow::Error::new(e)
+        })
+        .with_context(|| format!("Failed to read banner file: {}", path))?;
+
+    // Check if the file is empty
+    if config_str.is_empty() {
+        error!("Banner file is empty: {}", path);
+        return Err(anyhow::Error::msg("Banner file is empty"));
+    }
+
+    info!("Banner file loaded successfully: {}", path);
+    Ok(config_str)
 }
 
 #[repr(C)]

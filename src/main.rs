@@ -12,13 +12,12 @@ mod session;
 mod watchdog;
 
 use crate::config::Config;
-use crate::core_cli::Cli;
-use crate::helpers::handle_command;
-use crate::helpers::load_config;
-
 use crate::constants::DEFAULT_CONFIG_PATH;
+use crate::core_cli::core_cli::Cli;
+use crate::helpers::{handle_command, load_config};
 
 use anyhow::Result;
+use clap::Parser;
 use colored::*;
 use env_logger::{Builder, Env};
 use ipc::Ipc;
@@ -30,10 +29,16 @@ use tokio;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args = Cli::from_args();
+    let args = Cli::parse();
 
     // Initialize the logger with a custom format and colors
-    Builder::from_env(Env::default().default_filter_or("info"))
+    let env = if args.verbose {
+        Env::default().default_filter_or("info")
+    } else {
+        Env::default().default_filter_or("warn")
+    };
+
+    Builder::from_env(env)
         .format(|buf, record| {
             let timestamp = buf.timestamp().to_string();
             let level = match record.level() {
@@ -78,7 +83,7 @@ async fn main() -> Result<()> {
 
     handle_command(&ipc, username, command, download_speed, upload_speed).await;
 
-    watchdog::start_watchdog(ipc.clone()); // Start the watchdog process
+    watchdog::start_watchdog(ipc.clone(), args.verbose); // Pass the verbose flag to the watchdog
 
     server::run(config, ipc).await?;
 

@@ -1,3 +1,5 @@
+use crate::core_network::handlers::handle_fxp_transfer;
+use crate::helpers::{sanitize_input, send_response};
 use crate::{session::Session, Config};
 use log::{error, info, warn};
 use std::io::{self, ErrorKind};
@@ -8,8 +10,6 @@ use tokio::{
     net::TcpStream,
     sync::Mutex,
 };
-
-use crate::helpers::{sanitize_input, send_response};
 
 pub async fn handle_retr_command(
     writer: Arc<Mutex<TcpStream>>,
@@ -33,7 +33,7 @@ pub async fn handle_retr_command(
         file_path.canonicalize().unwrap_or_else(|_| file_path)
     };
 
-    if !resolved_path.starts_with(&resolved_path) {
+    if !resolved_path.starts_with(&session.lock().await.base_path) {
         error!("Path is outside of the allowed area: {:?}", resolved_path);
         send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
         return Ok(());
@@ -59,6 +59,7 @@ pub async fn handle_retr_command(
 
         let buffer_size = config.server.download_buffer_size.unwrap_or(128 * 1024);
         let mut buffer = vec![0; buffer_size]; // Use configured buffer size
+
         while let Ok(bytes_read) = file.read(&mut buffer).await {
             if bytes_read == 0 {
                 break; // End of file

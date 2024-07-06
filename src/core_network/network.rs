@@ -1,14 +1,14 @@
 use crate::core_ftpcommand::ftpcommand::FtpCommand;
 use crate::core_ftpcommand::handlers::initialize_command_handlers;
 use crate::core_log::logger::log_message;
+use crate::helpers::load_banner;
 use crate::ipc::update_ipc;
 use crate::session::Session;
 use crate::Config;
 use crate::Ipc;
-
 use anyhow::{Context, Result};
 use log::{error, info};
-use std::fs::File;
+
 use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -16,7 +16,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
 
-use crate::core_ftpcommand::utils::send_response;
+use crate::helpers::send_response;
 
 use crate::core_network::pasv::accept_pasv_connection;
 use crate::core_network::pasv::setup_pasv_listener;
@@ -135,7 +135,6 @@ pub async fn handle_connection(
         let args = parts[1..].to_vec();
 
         // Update IPC with the command and username
-        // Update IPC with the command and username
         let username = {
             let session = session.lock().await;
             session.username.clone().unwrap_or_default()
@@ -199,12 +198,4 @@ pub async fn handle_connection(
         }
     }
     Ok(())
-}
-
-fn load_banner(path: &str) -> Result<String> {
-    let mut file = File::open(path).context(format!("Failed to open banner file: {}", path))?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)
-        .context(format!("Failed to read banner file: {}", path))?;
-    Ok(contents)
 }

@@ -17,21 +17,6 @@ pub async fn setup_port_connection(ip: &str, port: u16) -> Result<TcpStream> {
 }
 
 /// Handles the PORT (Active Mode) FTP command.
-///
-/// This function sets up an active mode connection to the client.
-/// The function ensures the IP and port provided by the client are valid
-/// and attempts to connect to the specified address.
-///
-/// # Arguments
-///
-/// * `writer` - A shared, locked TCP stream for writing responses to the client.
-/// * `config` - A shared server configuration.
-/// * `session` - A shared, locked session containing the user's current state.
-/// * `arg` - The IP address and port provided by the client.
-///
-/// # Returns
-///
-/// Result<(), std::io::Error> indicating the success or failure of the operation.
 pub async fn handle_port_command(
     writer: Arc<Mutex<TcpStream>>,
     _config: Arc<Config>,
