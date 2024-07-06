@@ -1,3 +1,4 @@
+mod config;
 mod constants;
 mod cookies;
 mod core_cli;
@@ -10,6 +11,7 @@ mod server;
 mod session;
 mod watchdog;
 
+use crate::config::Config;
 use crate::core_cli::Cli;
 use crate::helpers::handle_command;
 use crate::helpers::load_config;
@@ -18,26 +20,11 @@ use anyhow::Result;
 use colored::*;
 use env_logger::{Builder, Env};
 use ipc::Ipc;
-use serde::Deserialize;
-use std::sync::Mutex;
 use std::io::Write;
 use std::sync::Arc;
+use std::sync::Mutex;
 use structopt::StructOpt;
 use tokio;
-
-#[derive(Debug, Deserialize)]
-struct ServerConfig {
-    listen_port: u16,
-    pasv_address: String,
-    ipc_key: String,
-    chroot_dir: String,
-    min_homedir: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct Config {
-    server: ServerConfig,
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {

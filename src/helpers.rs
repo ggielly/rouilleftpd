@@ -1,7 +1,7 @@
 //use crate::tokio::fs;
-use crate::{Ipc, Config};
-use std::fs;
+use crate::{Config, Ipc};
 use anyhow::{Context, Result};
+use std::fs;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -32,7 +32,7 @@ pub fn update_user_record(
 ) {
     let mut username_bytes = [0u8; 32];
     let mut command_bytes = [0u8; 32];
-    
+
     // Copy the username and command into the fixed-size arrays
     username_bytes[..username.len()].copy_from_slice(username.as_bytes());
     command_bytes[..command.len()].copy_from_slice(command.as_bytes());
@@ -95,7 +95,6 @@ async fn read_config(path: &str) -> Result<String> {
         .with_context(|| format!("Failed to read configuration file: {}", path))?;
     Ok(config_str)
 }
-
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]

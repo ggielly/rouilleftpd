@@ -8,7 +8,6 @@ use std::sync::Arc;
 use crate::session::Session;
 use std::path::PathBuf;
 
-
 /// Runs the FTP server with the provided configuration and IPC key.
 ///
 /// This function initializes the server configuration and starts the FTP server,

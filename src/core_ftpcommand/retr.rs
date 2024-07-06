@@ -1,9 +1,10 @@
 use crate::{session::Session, Config};
 use log::{error, info, warn};
+use std::io::{self, ErrorKind};
 use std::sync::Arc;
 use tokio::{
     fs::File,
-    io::{AsyncReadExt, AsyncWriteExt, Result},
+    io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
     sync::Mutex,
 };
@@ -12,10 +13,10 @@ use crate::helpers::{sanitize_input, send_response};
 
 pub async fn handle_retr_command(
     writer: Arc<Mutex<TcpStream>>,
-    _config: Arc<Config>,
+    config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
-) -> Result<()> {
+) -> io::Result<()> {
     if arg.trim().is_empty() {
         warn!("RETR command received with no arguments");
         send_response(&writer, b"501 Syntax error in parameters or arguments.\r\n").await?;
@@ -38,14 +39,9 @@ pub async fn handle_retr_command(
         return Ok(());
     }
 
-    let mut file = match File::open(&resolved_path).await {
-        Ok(f) => f,
-        Err(e) => {
-            error!("Failed to open file: {:?}, error: {}", resolved_path, e);
-            send_response(&writer, b"550 Failed to open file.\r\n").await?;
-            return Ok(());
-        }
-    };
+    let mut file = File::open(&resolved_path)
+        .await
+        .map_err(|e| io::Error::new(ErrorKind::Other, format!("Failed to open file: {:?}", e)))?;
 
     send_response(
         &writer,
@@ -61,16 +57,22 @@ pub async fn handle_retr_command(
     if let Some(data_stream) = data_stream {
         let mut data_stream = data_stream.lock().await;
 
-        let mut buffer = vec![0; 65536]; // Larger buffer size (64 KB)
+        let buffer_size = config.server.download_buffer_size.unwrap_or(128 * 1024);
+        let mut buffer = vec![0; buffer_size]; // Use configured buffer size
         while let Ok(bytes_read) = file.read(&mut buffer).await {
             if bytes_read == 0 {
                 break; // End of file
             }
 
-            if let Err(e) = data_stream.write_all(&buffer[..bytes_read]).await {
-                error!("Error writing to data stream: {}", e);
-                return Err(e);
-            }
+            data_stream
+                .write_all(&buffer[..bytes_read])
+                .await
+                .map_err(|e| {
+                    io::Error::new(
+                        ErrorKind::Other,
+                        format!("Error writing to data stream: {:?}", e),
+                    )
+                })?;
         }
 
         send_response(&writer, b"226 Transfer complete.\r\n").await?;
