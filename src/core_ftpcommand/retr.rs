@@ -11,6 +11,7 @@ use tokio::{
     sync::Mutex,
 };
 
+/// Handles the RETR (Retrieve File) FTP command.
 pub async fn handle_retr_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
@@ -26,28 +27,33 @@ pub async fn handle_retr_command(
     let sanitized_arg = sanitize_input(&arg);
     info!("Received RETR command with argument: {}", sanitized_arg);
 
-    let resolved_path = {
+    let file_path = {
         let session = session.lock().await;
-        let base_path = session.base_path.clone();
-        let file_path = base_path.join(&sanitized_arg);
-        file_path.canonicalize().unwrap_or_else(|_| file_path)
+        let file_path = session.base_path.join(&sanitized_arg);
+
+        if !file_path.starts_with(&session.base_path) {
+            error!("Path is outside of the allowed area: {:?}", file_path);
+            send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
+            return Ok(());
+        }
+        file_path
     };
 
-    if !resolved_path.starts_with(&session.lock().await.base_path) {
-        error!("Path is outside of the allowed area: {:?}", resolved_path);
-        send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
-        return Ok(());
-    }
+    let mut file = match File::open(&file_path).await {
+        Ok(f) => f,
+        Err(e) => {
+            error!("Failed to open file: {:?}, error: {}", file_path, e);
+            let message = match e.kind() {
+                ErrorKind::NotFound => "550 File not found.\r\n",
+                ErrorKind::PermissionDenied => "550 Permission denied.\r\n",
+                _ => "451 Requested action aborted. Local error in processing.\r\n",
+            };
+            send_response(&writer, message.as_bytes()).await?;
+            return Ok(());
+        }
+    };
 
-    let mut file = File::open(&resolved_path)
-        .await
-        .map_err(|e| io::Error::new(ErrorKind::Other, format!("Failed to open file: {:?}", e)))?;
-
-    send_response(
-        &writer,
-        b"150 File status okay; about to open data connection.\r\n",
-    )
-    .await?;
+    send_response(&writer, b"150 File status okay; about to open data connection.\r\n").await?;
 
     let data_stream = {
         let session = session.lock().await;
@@ -56,32 +62,48 @@ pub async fn handle_retr_command(
 
     if let Some(data_stream) = data_stream {
         let mut data_stream = data_stream.lock().await;
-
-        let buffer_size = config.server.download_buffer_size.unwrap_or(128 * 1024);
+        let buffer_size = config.server.download_buffer_size.unwrap_or(256 * 1024);
         let mut buffer = vec![0; buffer_size]; // Use configured buffer size
 
-        while let Ok(bytes_read) = file.read(&mut buffer).await {
-            if bytes_read == 0 {
-                break; // End of file
-            }
+        loop {
+            info!("Reading from file...");
+            let bytes_read = match file.read(&mut buffer).await {
+                Ok(0) => {
+                    info!("No more data to read from file.");
+                    break;
+                },
+                Ok(n) => n,
+                Err(e) => {
+                    error!("Error reading from file: {}", e);
+                    send_response(&writer, b"550 Error reading from file.\r\n").await?;
+                    return Ok(());
+                }
+            };
+            info!("Read {} bytes from file", bytes_read);
 
-            data_stream
-                .write_all(&buffer[..bytes_read])
-                .await
-                .map_err(|e| {
-                    io::Error::new(
-                        ErrorKind::Other,
-                        format!("Error writing to data stream: {:?}", e),
-                    )
-                })?;
+            info!("Writing to data stream...");
+            if let Err(e) = data_stream.write_all(&buffer[..bytes_read]).await {
+                error!("Error writing to data stream: {}", e);
+                send_response(&writer, b"550 Error writing to data connection.\r\n").await?;
+                return Ok(());
+            }
+            info!("Wrote {} bytes to data stream", bytes_read);
         }
 
-        send_response(&writer, b"226 Transfer complete.\r\n").await?;
-        info!("File transferred successfully: {:?}", resolved_path);
+        // Ensure all data is flushed and the connection is properly closed
+        if let Err(e) = data_stream.shutdown().await {
+            error!("Error closing data stream: {}", e);
+            send_response(&writer, b"426 Connection closed; transfer aborted.\r\n").await?;
+            return Ok(());
+        }
     } else {
         error!("Data connection is not established.");
         send_response(&writer, b"425 Can't open data connection.\r\n").await?;
+        return Ok(());
     }
+
+    send_response(&writer, b"226 Transfer complete.\r\n").await?;
+    info!("File transferred successfully: {:?}", file_path);
 
     Ok(())
 }
