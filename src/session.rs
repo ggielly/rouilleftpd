@@ -1,10 +1,10 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use std::collections::HashMap;
 
-use sysinfo::{System, SystemExt, DiskExt};
+use sysinfo::{DiskExt, System, SystemExt};
 
 /// DEBUG - REMOVE ME ///
 ///
@@ -85,7 +85,6 @@ impl Session {
         "Unlimited" // Example value, replace with actual logic
     }
 
-
     pub fn get_disk_info(&self) -> Vec<(String, u64, u64)> {
         let mut disks_info = Vec::new();
         let sys = System::new_all();
@@ -124,6 +123,8 @@ impl SessionManager {
     }
 
     pub fn create_session(&mut self, id: String, base_path: PathBuf) -> &mut Session {
-        self.sessions.entry(id.clone()).or_insert_with(|| Session::new(base_path))
+        self.sessions
+            .entry(id.clone())
+            .or_insert_with(|| Session::new(base_path))
     }
 }

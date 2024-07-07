@@ -1,4 +1,3 @@
-use crate::core_network::handlers::handle_fxp_transfer;
 use crate::helpers::{sanitize_input, send_response};
 use crate::{session::Session, Config};
 use log::{error, info, warn};

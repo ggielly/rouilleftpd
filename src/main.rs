@@ -10,6 +10,7 @@ mod ipc;
 mod server;
 mod session;
 mod watchdog;
+mod users;
 
 use crate::config::Config;
 use crate::constants::DEFAULT_CONFIG_PATH;
@@ -24,7 +25,6 @@ use ipc::Ipc;
 use std::io::Write;
 use std::sync::Arc;
 use std::sync::Mutex;
-use structopt::StructOpt;
 use tokio;
 
 #[tokio::main]

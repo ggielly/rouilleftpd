@@ -6,10 +6,9 @@ use crate::ipc::update_ipc;
 use crate::session::Session;
 use crate::Config;
 use crate::Ipc;
-use anyhow::{Context, Result};
+use anyhow::{Result};
 use log::{error, info};
 
-use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};

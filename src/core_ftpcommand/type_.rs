@@ -10,17 +10,7 @@ use tokio::sync::Mutex;
 ///
 /// This function sets the transfer mode to either ASCII, EBCDIC, Binary, or Local Byte.
 /// It sends appropriate responses back to the FTP client.
-///
-/// # Arguments
-///
-/// * `writer` - A shared, locked TCP stream for writing responses to the client.
-/// * `config` - A shared server configuration.
-/// * `session` - A shared, locked session containing the user's current state.
-/// * `arg` - The argument specifying the transfer type.
-///
-/// # Returns
-///
-/// Result<(), std::io::Error> indicating the success or failure of the operation.
+
 pub async fn handle_type_command(
     writer: Arc<Mutex<TcpStream>>,
     _config: Arc<Config>,

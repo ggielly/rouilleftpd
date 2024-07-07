@@ -1,7 +1,8 @@
 use std::num::ParseIntError;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
-use crate::helpers::UserRecord;
+use crate::users::UserRecord;
+
 
 #[derive(Debug, Error)]
 pub enum IpcError {

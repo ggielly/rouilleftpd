@@ -3,11 +3,10 @@ use log::{error, info, warn};
 use std::sync::Arc;
 use tokio::{
     fs::File,
-    io::{self, AsyncReadExt, AsyncWriteExt, Result},
+    io::{self, AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
     sync::Mutex,
 };
-use std::path::{Path, PathBuf};
 use std::io::ErrorKind;
 
 /// Handles the STOR (Store File) FTP command.

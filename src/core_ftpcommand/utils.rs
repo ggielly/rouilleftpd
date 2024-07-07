@@ -1,11 +1,5 @@
 use crate::Config;
-
 use std::path::PathBuf;
-
-
-
-
-
 
 /// Constructs the directory path within the user's current directory and the server's chroot directory.
 pub fn construct_path(config: &Config, current_dir: &str, sanitized_arg: &str) -> PathBuf {

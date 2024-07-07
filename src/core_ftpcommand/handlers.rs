@@ -207,7 +207,7 @@ pub fn initialize_command_handlers() -> HashMap<FtpCommand, Arc<CommandHandler>>
 
     handlers.insert(
         FtpCommand::RETR,
-        Arc::new(Box::new(|writer, config, session, arg, data_stream| {
+        Arc::new(Box::new(|writer, config, session, arg, _data_stream| {
             Box::pin(crate::core_ftpcommand::retr::handle_retr_command(
                 writer, config, session, arg,
             ))
