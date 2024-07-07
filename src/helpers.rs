@@ -1,4 +1,3 @@
-
 use crate::{Config, Ipc};
 use anyhow::{Context, Result};
 use log::error;
@@ -11,7 +10,6 @@ use tokio::sync::Mutex;
 
 use crate::users::update_user_record;
 
-
 pub fn pad_message(message: &[u8], length: usize) -> Vec<u8> {
     let mut padded_message = Vec::with_capacity(length);
     padded_message.extend_from_slice(message);
@@ -20,7 +18,6 @@ pub fn pad_message(message: &[u8], length: usize) -> Vec<u8> {
     }
     padded_message
 }
-
 
 /// Sanitizes input to prevent directory traversal attacks and ensure paths are relative.
 pub fn sanitize_input(input: &str) -> String {

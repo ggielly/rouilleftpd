@@ -1,5 +1,12 @@
-use crate::{Config, session::Session, helpers::{sanitize_input, send_response}};
-use log::{error, info, warn};
+use crate::constants::MESSAGE_LENGTH;
+use crate::helpers::pad_message;
+use crate::{
+    helpers::{sanitize_input, send_response},
+    session::Session,
+    Config,
+};
+use log::{debug, error, info, trace, warn};
+use std::io::ErrorKind;
 use std::sync::Arc;
 use tokio::{
     fs::File,
@@ -7,10 +14,6 @@ use tokio::{
     net::TcpStream,
     sync::Mutex,
 };
-use crate::helpers::pad_message;
-use std::io::ErrorKind;
-use crate::constants::MESSAGE_LENGTH;
-
 
 /// Handles the RETR (Retrieve File) FTP command.
 ///
@@ -21,9 +24,7 @@ pub async fn handle_retr_command(
     config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
-    data_stream: Arc<Mutex<TcpStream>>, // Data stream passed explicitly
-
-
+    data_stream: Option<Arc<Mutex<TcpStream>>>,
 ) -> io::Result<()> {
     if arg.trim().is_empty() {
         warn!("RETR command received with no arguments");
@@ -37,7 +38,7 @@ pub async fn handle_retr_command(
     // 1. Secure Path Construction:
     let file_path = {
         let session = session.lock().await;
-        let file_path = session.base_path.join(&sanitized_arg); 
+        let file_path = session.base_path.join(&sanitized_arg);
 
         // Ensure the file path is within the base path
         if !file_path.starts_with(&session.base_path) {
@@ -55,23 +56,46 @@ pub async fn handle_retr_command(
             error!("Failed to open file: {:?}, error: {}", file_path, err);
             let message = match err.kind() {
                 ErrorKind::NotFound => pad_message(b"550 File not found.\r\n", MESSAGE_LENGTH),
-                ErrorKind::PermissionDenied => pad_message(b"550 Permission denied.\r\n", MESSAGE_LENGTH),
-                _ => pad_message(b"451 Requested action aborted. Local error in processing.\r\n", MESSAGE_LENGTH),
+                ErrorKind::PermissionDenied => {
+                    pad_message(b"550 Permission denied.\r\n", MESSAGE_LENGTH)
+                }
+                _ => pad_message(
+                    b"451 Requested action aborted. Local error in processing.\r\n",
+                    MESSAGE_LENGTH,
+                ),
             };
-        
+
             send_response(&writer, &message).await?; // Pass message as a reference slice
-        
+
             return Ok(());
         }
     };
 
     // 3. Data Transfer:
     info!("Sending file: {:?}", file_path);
-    send_response(&writer, b"150 Opening data connection for file transfer.\r\n").await?;
-    
-    // Lock the data stream 
-    let mut data_stream = data_stream.lock().await; 
-    let buffer_size = config.server.download_buffer_size.unwrap_or(65536); // Use configured or default buffer size
+    send_response(
+        &writer,
+        b"150 Opening data connection for file transfer.\r\n",
+    )
+    .await?;
+
+    // Ensure data_stream is provided
+    trace!("Attempting to lock data stream for file transfer.");
+    let data_stream = match data_stream {
+        Some(stream) => {
+            trace!("Data stream found, locking...");
+            stream
+        }
+        None => {
+            error!("Data stream is None");
+            send_response(&writer, b"425 Can't open data connection.\r\n").await?;
+            return Ok(());
+        }
+    };
+
+    let mut data_stream = data_stream.lock().await;
+    trace!("Data stream locked for file transfer.");
+    let buffer_size = config.server.upload_buffer_size.unwrap_or(65536);
     let mut buffer = vec![0; buffer_size];
 
     loop {
@@ -85,14 +109,15 @@ pub async fn handle_retr_command(
                 return Ok(());
             }
         };
-        
+
         // Write from buffer to the data stream
         if let Err(e) = data_stream.write_all(&buffer[..bytes_read]).await {
             error!("Error writing to data stream: {}", e);
             return Err(e);
         }
+        trace!("Transferred {} bytes to data stream.", bytes_read);
     }
-   
+
     // Shut down data stream when done
     if let Err(e) = data_stream.shutdown().await {
         error!("Error shutting down data stream: {}", e);

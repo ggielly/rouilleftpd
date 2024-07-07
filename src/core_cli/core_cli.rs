@@ -12,7 +12,7 @@ pub struct Cli {
     #[arg(short, long)]
     pub ipc_key: Option<String>,
 
-    /// Enable verbose mode
-    #[arg(short, long)]
-    pub verbose: bool,
+    /// Enable verbose mode (-v, -vv, -vvv)
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    pub verbose: u8,
 }

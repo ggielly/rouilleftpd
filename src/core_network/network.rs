@@ -6,7 +6,7 @@ use crate::ipc::update_ipc;
 use crate::session::Session;
 use crate::Config;
 use crate::Ipc;
-use anyhow::{Result};
+use anyhow::Result;
 use log::{error, info};
 
 use std::path::PathBuf;

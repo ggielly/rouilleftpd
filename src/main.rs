@@ -9,8 +9,8 @@ mod helpers;
 mod ipc;
 mod server;
 mod session;
-mod watchdog;
 mod users;
+mod watchdog;
 
 use crate::config::Config;
 use crate::constants::DEFAULT_CONFIG_PATH;
@@ -22,6 +22,7 @@ use clap::Parser;
 use colored::*;
 use env_logger::{Builder, Env};
 use ipc::Ipc;
+use log::LevelFilter;
 use std::io::Write;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -32,13 +33,15 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
 
     // Initialize the logger with a custom format and colors
-    let env = if args.verbose {
-        Env::default().default_filter_or("info")
-    } else {
-        Env::default().default_filter_or("warn")
+    let log_level = match args.verbose {
+        0 => LevelFilter::Warn,
+        1 => LevelFilter::Info,
+        2 => LevelFilter::Debug,
+        _ => LevelFilter::Trace,
     };
 
-    Builder::from_env(env)
+    Builder::new()
+        .filter(None, log_level)
         .format(|buf, record| {
             let timestamp = buf.timestamp().to_string();
             let level = match record.level() {
@@ -83,7 +86,7 @@ async fn main() -> Result<()> {
 
     handle_command(&ipc, username, command, download_speed, upload_speed).await;
 
-    watchdog::start_watchdog(ipc.clone(), args.verbose); // Pass the verbose flag to the watchdog
+    //watchdog::start_watchdog(ipc.clone(), args.verbose); // Pass the verbose flag to the watchdog
 
     server::run(config, ipc).await?;
 

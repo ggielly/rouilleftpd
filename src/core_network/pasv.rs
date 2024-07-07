@@ -1,6 +1,6 @@
 use crate::{session::Session, Config};
 use anyhow::Result;
-use log::{error, info};
+use log::{debug, error, info, trace};
 use std::net::IpAddr;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -27,6 +27,7 @@ pub async fn handle_pasv_command(
     {
         let mut writer = writer.lock().await;
         writer.write_all(pasv_response.as_bytes()).await?;
+        debug!("PASV response sent to client: {}", pasv_response);
     }
 
     // Clone writer and session to move into the spawned task
@@ -37,9 +38,14 @@ pub async fn handle_pasv_command(
     tokio::spawn(async move {
         match accept_pasv_connection(listener).await {
             Ok(data_stream) => {
+                trace!("Data connection accepted for PASV mode.");
                 let mut session = session_clone.lock().await;
                 session.data_stream = Some(Arc::new(Mutex::new(data_stream)));
-                info!("PASV connection established");
+                info!("PASV connection established and data stream set in session.");
+                trace!(
+                    "Data stream set in session: {:?}",
+                    session.data_stream.is_some()
+                );
             }
             Err(e) => {
                 error!("Failed to accept data connection: {}", e);
@@ -72,11 +78,17 @@ pub async fn setup_pasv_listener(pasv_ip: IpAddr) -> Result<(TcpListener, String
         addr.port() / 256,
         addr.port() % 256
     );
+    debug!(
+        "PASV listener set up on IP: {}, Port: {}",
+        pasv_ip,
+        addr.port()
+    );
     Ok((listener, pasv_response))
 }
 
 /// Accepts the incoming connection on the passive listener.
 pub async fn accept_pasv_connection(listener: TcpListener) -> Result<TcpStream, std::io::Error> {
-    let (data_stream, _) = listener.accept().await?;
+    let (data_stream, addr) = listener.accept().await?;
+    debug!("Accepted data connection from: {}", addr);
     Ok(data_stream)
 }

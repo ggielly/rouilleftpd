@@ -1,5 +1,11 @@
-use crate::{Config, session::Session, helpers::{sanitize_input, send_response}};
+use crate::helpers::pad_message;
+use crate::{
+    helpers::{sanitize_input, send_response},
+    session::Session,
+    Config,
+};
 use log::{error, info, warn};
+use std::io::ErrorKind;
 use std::sync::Arc;
 use tokio::{
     fs::File,
@@ -7,11 +13,8 @@ use tokio::{
     net::TcpStream,
     sync::Mutex,
 };
-use crate::helpers::pad_message;
-use std::io::ErrorKind;
 
 use crate::constants::MESSAGE_LENGTH;
-
 
 /// Handles the STOR (Store File) FTP command.
 ///
@@ -35,8 +38,7 @@ pub async fn handle_stor_command(
     config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
-    data_stream: Arc<Mutex<TcpStream>>,
-
+    data_stream: Option<Arc<Mutex<TcpStream>>>, // Change data_stream to Option
 ) -> io::Result<()> {
     if arg.trim().is_empty() {
         warn!("STOR command received with no arguments");
@@ -60,7 +62,6 @@ pub async fn handle_stor_command(
         }
         file_path
     };
-    
 
     // 2. Create File and Handle Errors:
     let mut file = match File::create(&file_path).await {
@@ -70,21 +71,35 @@ pub async fn handle_stor_command(
             // More specific error handling based on the type of error
             let message = match e.kind() {
                 ErrorKind::NotFound => pad_message(b"550 File not found.\r\n", MESSAGE_LENGTH),
-                ErrorKind::PermissionDenied => pad_message(b"550 Permission denied.\r\n", MESSAGE_LENGTH),
-                _ => pad_message(b"451 Requested action aborted. Local error in processing.\r\n", MESSAGE_LENGTH),
+                ErrorKind::PermissionDenied => {
+                    pad_message(b"550 Permission denied.\r\n", MESSAGE_LENGTH)
+                }
+                _ => pad_message(
+                    b"451 Requested action aborted. Local error in processing.\r\n",
+                    MESSAGE_LENGTH,
+                ),
             };
-        
+
             send_response(&writer, &message).await?; // Pass message as a reference slice
-        
+
             return Ok(());
         }
     };
 
     // 3. Data Transfer
-    send_response(&writer, b"150 File status okay; about to open data connection.\r\n").await?;
-    
-    // Lock the data stream 
-    let mut data_stream = data_stream.lock().await; 
+    send_response(
+        &writer,
+        b"150 File status okay; about to open data connection.\r\n",
+    )
+    .await?;
+
+    // Lock the data stream
+    let data_stream = {
+        let mut session = session.lock().await;
+        session.data_stream.take().expect("Data stream is None")
+    };
+
+    let mut data_stream = data_stream.lock().await;
     let buffer_size = config.server.upload_buffer_size.unwrap_or(65536); // Use configured or default buffer size
     let mut buffer = vec![0; buffer_size];
 
@@ -99,14 +114,14 @@ pub async fn handle_stor_command(
                 return Ok(());
             }
         };
-        
+
         // Write from buffer to the file
         if let Err(e) = file.write_all(&buffer[..bytes_read]).await {
             error!("Error writing to file: {}", e);
             return Err(e);
         }
     }
-   
+
     // Shut down data stream when done
     if let Err(e) = data_stream.shutdown().await {
         error!("Error shutting down data stream: {}", e);
