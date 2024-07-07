@@ -13,6 +13,9 @@ pub const MAX_DELIP_IPS: usize = 10;
 
 pub const DEFAULT_CONFIG_PATH : &str ="/etc/rouilleftpd.conf";
 
+// Constants specific to the RETR and STOR commands
+pub const MESSAGE_LENGTH: usize = 58;
+
 
 /*
   Flagname       	Flag	Description

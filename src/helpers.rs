@@ -12,6 +12,16 @@ use tokio::sync::Mutex;
 use crate::users::update_user_record;
 
 
+pub fn pad_message(message: &[u8], length: usize) -> Vec<u8> {
+    let mut padded_message = Vec::with_capacity(length);
+    padded_message.extend_from_slice(message);
+    while padded_message.len() < length {
+        padded_message.push(b' '); // Pad with spaces up to the desired length
+    }
+    padded_message
+}
+
+
 /// Sanitizes input to prevent directory traversal attacks and ensure paths are relative.
 pub fn sanitize_input(input: &str) -> String {
     // Remove directory traversal sequences

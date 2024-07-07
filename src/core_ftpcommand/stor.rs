@@ -7,15 +7,36 @@ use tokio::{
     net::TcpStream,
     sync::Mutex,
 };
+use crate::helpers::pad_message;
 use std::io::ErrorKind;
 
+use crate::constants::MESSAGE_LENGTH;
+
+
 /// Handles the STOR (Store File) FTP command.
+///
+/// This function stores a file uploaded by the client to the server within the user's current directory.
+/// The function ensures the file is within the allowed chroot area, sanitizes inputs to prevent directory traversal attacks,
+/// and sends appropriate responses back to the FTP client.
+///
+/// # Arguments
+///
+/// * `writer` - A shared, locked TCP stream for writing responses to the client.
+/// * `config` - A shared server configuration.
+/// * `session` - A shared, locked session containing the user's current state.
+/// * `arg` - The name of the file to be stored.
+/// * `data_stream` - The data connection for receiving the file data.
+///
+/// # Returns
+///
+/// Result<(), std::io::Error> indicating the success or failure of the operation.
 pub async fn handle_stor_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
-    _data_stream: Option<Arc<Mutex<TcpStream>>>,
+    data_stream: Arc<Mutex<TcpStream>>,
+
 ) -> io::Result<()> {
     if arg.trim().is_empty() {
         warn!("STOR command received with no arguments");
@@ -26,7 +47,7 @@ pub async fn handle_stor_command(
     let sanitized_arg = sanitize_input(&arg);
     info!("Received STOR command with argument: {}", sanitized_arg);
 
-    // Secure Path Construction:
+    // 1. Secure Path Construction:
     let file_path = {
         let session = session.lock().await;
 
@@ -39,85 +60,62 @@ pub async fn handle_stor_command(
         }
         file_path
     };
+    
 
-    // Ensure the directory exists
-    if let Some(parent_dir) = file_path.parent() {
-        if tokio::fs::create_dir_all(parent_dir).await.is_err() {
-            error!("Failed to create parent directory: {:?}", parent_dir);
-            send_response(&writer, b"550 Failed to create parent directory.\r\n").await?;
-            return Ok(());
-        }
-    }
-
-    // Create File and Handle Errors:
+    // 2. Create File and Handle Errors:
     let mut file = match File::create(&file_path).await {
         Ok(f) => f,
         Err(e) => {
             error!("Failed to create file: {:?}, error: {}", file_path, e);
             // More specific error handling based on the type of error
             let message = match e.kind() {
-                ErrorKind::NotFound => "550 File not found.\r\n",
-                ErrorKind::PermissionDenied => "550 Permission denied.\r\n",
-                _ => "451 Requested action aborted. Local error in processing.\r\n",
+                ErrorKind::NotFound => pad_message(b"550 File not found.\r\n", MESSAGE_LENGTH),
+                ErrorKind::PermissionDenied => pad_message(b"550 Permission denied.\r\n", MESSAGE_LENGTH),
+                _ => pad_message(b"451 Requested action aborted. Local error in processing.\r\n", MESSAGE_LENGTH),
             };
-            send_response(&writer, message.as_bytes()).await?;
+        
+            send_response(&writer, &message).await?; // Pass message as a reference slice
+        
             return Ok(());
         }
     };
 
-    // Data Transfer
+    // 3. Data Transfer
     send_response(&writer, b"150 File status okay; about to open data connection.\r\n").await?;
-    let data_stream = {
-        let session = session.lock().await;
-        session.data_stream.clone()
-    };
+    
+    // Lock the data stream 
+    let mut data_stream = data_stream.lock().await; 
+    let buffer_size = config.server.upload_buffer_size.unwrap_or(65536); // Use configured or default buffer size
+    let mut buffer = vec![0; buffer_size];
 
-    if let Some(data_stream) = data_stream {
-        info!("Attempting to lock data stream...");
-        let mut data_stream = data_stream.lock().await;
-        info!("Data stream locked successfully");
-
-        let buffer_size = config.server.upload_buffer_size.unwrap_or(256 * 1024);
-        let mut buffer = vec![0; buffer_size]; // Use configured buffer size
-
-        loop {
-            info!("Reading from data stream...");
-            let bytes_read = match data_stream.read(&mut buffer).await {
-                Ok(0) => {
-                    info!("No more data to read from data stream.");
-                    break;
-                },
-                Ok(n) => n,
-                Err(e) => {
-                    error!("Error reading from data stream: {}", e);
-                    send_response(&writer, b"550 Error reading from data connection.\r\n").await?;
-                    return Ok(());
-                }
-            };
-            info!("Read {} bytes from data stream", bytes_read);
-
-            info!("Writing to file...");
-            if let Err(e) = file.write_all(&buffer[..bytes_read]).await {
-                error!("Error writing to file: {}", e);
-                send_response(&writer, b"550 Error writing to file.\r\n").await?;
+    loop {
+        // Read from file into buffer
+        let bytes_read = match data_stream.read(&mut buffer).await {
+            Ok(0) => break, // End of file
+            Ok(n) => n,
+            Err(e) => {
+                error!("Error reading from data stream: {}", e);
+                send_response(&writer, b"550 File read error.\r\n").await?;
                 return Ok(());
             }
-            info!("Wrote {} bytes to file", bytes_read);
+        };
+        
+        // Write from buffer to the file
+        if let Err(e) = file.write_all(&buffer[..bytes_read]).await {
+            error!("Error writing to file: {}", e);
+            return Err(e);
         }
-
-        // Ensure all data is flushed and the connection is properly closed
-        if let Err(e) = data_stream.shutdown().await {
-            error!("Error closing data stream: {}", e);
-            send_response(&writer, b"426 Connection closed; transfer aborted.\r\n").await?;
-            return Ok(());
-        }
-    } else {
-        error!("Data connection is not established.");
-        send_response(&writer, b"425 Can't open data connection.\r\n").await?;
+    }
+   
+    // Shut down data stream when done
+    if let Err(e) = data_stream.shutdown().await {
+        error!("Error shutting down data stream: {}", e);
+        // Send error response to the client
+        send_response(&writer, b"426 Connection closed; transfer aborted.\r\n").await?;
         return Ok(());
     }
 
-    send_response(&writer, b"226 Transfer complete.\r\n").await?;
+    send_response(&writer, b"226 File transfer complete.\r\n").await?;
     info!("File stored successfully: {:?}", file_path);
 
     Ok(())

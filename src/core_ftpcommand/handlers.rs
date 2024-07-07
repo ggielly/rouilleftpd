@@ -205,6 +205,7 @@ pub fn initialize_command_handlers() -> HashMap<FtpCommand, Arc<CommandHandler>>
         })),
     );
 
+    /*
     handlers.insert(
         FtpCommand::RETR,
         Arc::new(Box::new(|writer, config, session, arg, _data_stream| {
@@ -225,8 +226,41 @@ pub fn initialize_command_handlers() -> HashMap<FtpCommand, Arc<CommandHandler>>
                 data_stream,
             ))
         })),
+    );*/
+
+    handlers.insert(
+        FtpCommand::RETR,
+        Arc::new(Box::new(|writer, config, session, arg, data_stream| {
+            Box::pin(async move {
+                crate::core_ftpcommand::retr::handle_retr_command(
+                    writer,
+                    config,
+                    session,
+                    arg,
+                    data_stream.expect("Data stream is None"),
+                )
+                .await?;
+                Ok(())
+            })
+        })),
     );
 
+    handlers.insert(
+        FtpCommand::STOR,
+        Arc::new(Box::new(|writer, config, session, arg, data_stream| {
+            Box::pin(async move {
+                crate::core_ftpcommand::stor::handle_stor_command(
+                    writer,
+                    config,
+                    session,
+                    arg,
+                    data_stream.expect("Data stream is None"),
+                )
+                .await?;
+                Ok(())
+            })
+        })),
+    );
     handlers.insert(
         FtpCommand::TYPE,
         Arc::new(Box::new(|writer, config, session, arg, _data_stream| {
