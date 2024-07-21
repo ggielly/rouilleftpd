@@ -38,11 +38,11 @@ pub async fn handle_pasv_command(
     tokio::spawn(async move {
         match accept_pasv_connection(listener).await {
             Ok(data_stream) => {
-                trace!("Data connection accepted for PASV mode.");
+                debug!("Data connection accepted for PASV mode.");
                 let mut session = session_clone.lock().await;
                 session.data_stream = Some(Arc::new(Mutex::new(data_stream)));
                 info!("PASV connection established and data stream set in session.");
-                trace!(
+                debug!(
                     "Data stream set in session: {:?}",
                     session.data_stream.is_some()
                 );

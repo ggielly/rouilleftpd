@@ -5,7 +5,7 @@ use crate::{
     session::Session,
     Config,
 };
-use log::{debug, error, info, trace, warn};
+use log::{error, info, trace, warn};
 use std::io::ErrorKind;
 use std::sync::Arc;
 use tokio::{

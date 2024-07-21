@@ -12,15 +12,16 @@ mod session;
 mod users;
 mod watchdog;
 
+use log::error;
 use crate::config::Config;
 use crate::constants::DEFAULT_CONFIG_PATH;
 use crate::core_cli::core_cli::Cli;
 use crate::helpers::{handle_command, load_config};
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{Parser};
 use colored::*;
-use env_logger::{Builder, Env};
+use env_logger::{Builder};
 use ipc::Ipc;
 use log::LevelFilter;
 use std::io::Write;
@@ -69,7 +70,7 @@ async fn main() -> Result<()> {
     let ipc: Arc<Ipc> = match Ipc::new(config.server.ipc_key.clone()) {
         Ok(instance) => Arc::new(instance),
         Err(e) => {
-            eprintln!("Failed to create IPC: {}", e);
+            error!("Failed to create IPC: {}", e);
             // Create a dummy IPC instance with an empty key if there's an error
             Arc::new(Ipc {
                 ipc_key: String::new(),

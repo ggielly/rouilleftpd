@@ -1,14 +1,14 @@
 use crate::session::Session;
 use crate::Config;
-use log::{error, info, warn};
-use std::collections::HashMap;
+use log::{error, info, warn,debug};
 use std::fs;
 use std::sync::Arc;
+
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
-use crate::core_ftpcommand::site::helper::{load_statline, cleanup_cookie_statline};
+use crate::helpers::generate_and_send_statline;
 
 pub async fn handle_list_command(
     writer: Arc<Mutex<TcpStream>>,
@@ -22,9 +22,9 @@ pub async fn handle_list_command(
         .base_path
         .join(current_dir.trim_start_matches('/'));
 
-    info!("base_path: {:?}", session_lock.base_path);
-    info!("Current dir: {:?}", current_dir);
-    info!("Constructed directory path: {:?}", dir_path);
+    debug!("base_path: {:?}", session_lock.base_path);
+    debug!("Current dir: {:?}", current_dir);
+    debug!("Constructed directory path: {:?}", dir_path);
 
     let canonical_dir_path = match dir_path.canonicalize() {
         Ok(path) => path,
@@ -122,21 +122,70 @@ pub async fn handle_list_command(
                 writer
                     .write_all(b"426 Connection closed; transfer aborted.\r\n")
                     .await?;
+                
             }
         }
     } else {
+
+        let writer_info = format!("{:?}", writer);
+        let config_info = format!("{:?}", config);
+        let session_info = format!("{:?}", session);
+
+        error!(
+            "Failed to open data connection for directory listing. 
+            Writer: {}, 
+            Config: {}, 
+            Session: {}",
+            writer_info, config_info, session_info
+        );
+
         let mut writer = writer.lock().await;
         writer
             .write_all(b"425 Can't open data connection.\r\n")
             .await?;
     }
 
-    if let Ok(statline_template) = load_statline(config.clone()).await {
+
+    generate_and_send_statline(writer.clone(), config.clone(), session.clone()).await?;
+
+
+
+    /*if let Ok(statline_template) = load_statline(config.clone()).await {
+        // Initialize the replacements map
+
         let mut replacements = HashMap::new();
+
+        /// TODO: Implement statline replacements
+        /// We must read from the user file, then display the user's information
+        /// in the statline template. The statline template will contain placeholders
+        /// that will be replaced with the user's information.
+        /// The user information will be read from the user file and parsed into a struct.
+        /// The struct will then be used to replace the placeholders in the statline template.
+        /// The statline will then be sent to the client.
+
+        /// Example statline template:
         replacements.insert("%[%.1f]IG%[%s]Y", format!("{:.1}MB", 0.0));
         replacements.insert("%[%.1f]IJ%[%s]Y", format!("{:.1}MB", 0.0));
         replacements.insert("%[%.2f]A%[%s]V", format!("{:.2}K/s", 7181.07));
-        replacements.insert("%[%.0f]FMB", format!("{:.0}MB", 973625.0));
+
+        // Free space on the server's disk
+        let session_lock = session.lock().await;
+        let current_dir = session_lock.current_dir.clone();
+        let path = PathBuf::from(current_dir);
+        drop(session_lock);
+        match get_site_free_space(&path) {
+            Ok(free_space_mb) => {
+                let formatted_space = format_free_space(free_space_mb as f64);
+                replacements.insert("%[%.0f]FMB", formatted_space);
+            }
+            Err(e) => {
+                error!("Failed to get free space: {:?}", e);
+                replacements.insert("%[%.0f]FMB", "0MB".to_string());
+            }
+        }
+    
+
+
         replacements.insert("%[%s]b", "DEFAULT".to_string());
         replacements.insert("%[%.1f]Ic%[%s]Y", format!("{:.1}MB", 14.6));
         replacements.insert("%[%s]Ir", "Unlimited".to_string());
@@ -146,7 +195,7 @@ pub async fn handle_list_command(
         let mut writer = writer.lock().await;
         writer.write_all(statline.as_bytes()).await?;
         info!("Statline sent successfully.");
-    }
+    }*/
 
     Ok(())
 }

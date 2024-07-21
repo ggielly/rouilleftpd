@@ -1,7 +1,9 @@
 use crate::users::UserRecord;
 use std::num::ParseIntError;
 use std::sync::{Arc, Mutex};
+use log::{debug, warn};
 use thiserror::Error;
+use log::error;
 
 #[derive(Debug, Error)]
 pub enum IpcError {
@@ -19,9 +21,8 @@ pub struct Ipc {
 
 impl Ipc {
     pub fn new(ipc_key: String) -> Result<Self, String> {
-        // Example implementation of creating a new Ipc instance
         if ipc_key.is_empty() {
-            Err("IPC key is empty".to_string())
+            Err("IPC key is empty.".to_string())
         } else {
             Ok(Ipc {
                 ipc_key,
@@ -41,7 +42,7 @@ impl Ipc {
         }
 
         // Debug output while reading
-        eprintln!("Read user records: {:?}", records);
+        error!("Read user records: {:?}", records);
 
         records
     }
@@ -52,7 +53,7 @@ impl Ipc {
 
         // Ensure the memory vector is large enough
         if memory.len() < bytes.len() {
-            eprintln!(
+            warn!(
                 "Memory is too small: the len is {} but required len is {}. Resizing the memory.",
                 memory.len(),
                 bytes.len()
@@ -66,14 +67,14 @@ impl Ipc {
         }
 
         // Debug output after writing
-        eprintln!("Memory after write operation: {:?}", *memory);
+        debug!("Memory after write operation: {:?}", *memory);
 
         // Eject the written bytes from memory and verify correctness
         let read_back = &memory[0..bytes.len()];
-        eprintln!("Bytes read back from memory: {:?}", read_back);
+        debug!("Bytes read back from memory: {:?}", read_back);
 
         // Additional log to check the record during writing
-        eprintln!("Record written: {:?}", record);
+        debug!("Record written: {:?}", record);
     }
 }
 

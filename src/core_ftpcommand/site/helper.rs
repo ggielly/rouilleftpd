@@ -1,4 +1,4 @@
-use crate::constants::USERNAME_REGEX;
+use crate::constants::{STATLINE_PATH, USERNAME_REGEX};
 use log::error;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -11,7 +11,6 @@ use crate::tokio::fs;
 use crate::Config;
 use std::collections::HashMap;
 
-
 pub async fn respond_with_error(
     writer: &Arc<Mutex<TcpStream>>,
     msg: &[u8],
@@ -19,8 +18,6 @@ pub async fn respond_with_error(
     let mut writer = writer.lock().await;
     writer.write_all(msg).await
 }
-
-
 
 pub async fn respond_with_success(
     writer: &Arc<Mutex<TcpStream>>,
@@ -157,7 +154,7 @@ pub fn get_flag_name(flag_value: u8) -> Option<&'static str> {
 }
 
 pub async fn load_statline(config: Arc<Config>) -> Result<String, std::io::Error> {
-    let statline_path = format!("{}/ftp-data/text/statline.txt", config.server.chroot_dir);
+    let statline_path: String = format!("{}{}", config.server.chroot_dir, STATLINE_PATH);
 
     match fs::read_to_string(statline_path).await {
         Ok(content) => Ok(content),
@@ -188,6 +185,10 @@ pub fn cleanup_cookie_statline(statline: &str, replacements: &HashMap<&str, Stri
 
     statline_replaced
 }
+
+
+
+
 
 pub async fn cleanup_cookie_site_user<'a>(
     user_info: &'a HashMap<&str, String>,

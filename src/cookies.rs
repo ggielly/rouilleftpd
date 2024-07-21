@@ -32,21 +32,26 @@ pub const GENERAL_COOKIES: &[(&str, &str)] = &[
 ];
 
 /// User cookie definitions
-pub const USER_COOKIES: &[(&str, &str)] = &[
-    ("%[%s]Iu", "Username"),
-    ("%[%s]I$", "User's comment"),
-    ("%[%s]I!", "User's expiring date as YYYY-MM-DD or Never if 0"),
-    ("%[%s]I-", "The user that added this user"),
-    ("%[%s]Iy", "Groups: long string separated by commas"),
-    ("%[%s]Ia", "Added date as YYYY-MM-DD"),
-    ("%[%s]Ib", "Banned date as YYYY-MM-DD"),
-    ("%[%s]Ix", "Number of logins"),
-    ("%[%s]Iv", "Number of logouts"),
-    ("%[%s]Iw", "Time since last login as a long string"),
-    ("%[%s]It", "User's tagline"),
-    ("%[%s]Ip", "User's IP address"),
-    ("%[%s]Ig", "User's primary group"),
-    ("%[%s]Igx", "User's extended groups"),
+pub struct UserCookie {
+    code: &'static str,
+    description: &'static str,
+}
+
+pub const USER_COOKIES: &[UserCookie] = &[
+    UserCookie { code: "%[%s]Iu", description: "Username" },
+    UserCookie { code: "%[%s]I$", description: "User's comment" },
+    UserCookie { code: "%[%s]I!", description: "User's expiring date as YYYY-MM-DD or Never if 0" },
+    UserCookie { code: "%[%s]I-", description: "The user that added this user" },
+    UserCookie { code: "%[%s]Iy", description: "Groups: long string separated by commas" },
+    UserCookie { code: "%[%s]Ia", description: "Added date as YYYY-MM-DD" },
+    UserCookie { code: "%[%s]Ib", description: "Banned date as YYYY-MM-DD" },
+    UserCookie { code: "%[%s]Ix", description: "Number of logins" },
+    UserCookie { code: "%[%s]Iv", description: "Number of logouts" },
+    UserCookie { code: "%[%s]Iw", description: "Time since last login as a long string" },
+    UserCookie { code: "%[%s]It", description: "User's tagline" },
+    UserCookie { code: "%[%s]Ip", description: "User's IP address" },
+    UserCookie { code: "%[%s]Ig", description: "User's primary group" },
+    UserCookie { code: "%[%s]Igx", description: "User's extended groups" },
 ];
 
 /// Oneliners cookie definitions

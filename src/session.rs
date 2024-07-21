@@ -10,7 +10,7 @@ use sysinfo::{DiskExt, System, SystemExt};
 ///
 use rand::Rng;
 ///
-
+#[derive(Debug)]
 pub struct Session {
     pub current_dir: String,
     pub rename_from: Option<PathBuf>,
