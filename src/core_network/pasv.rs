@@ -1,6 +1,6 @@
 use crate::{session::Session, Config};
 use anyhow::Result;
-use log::{debug, error, info, trace};
+use log::{debug, error, info};
 use std::net::IpAddr;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;

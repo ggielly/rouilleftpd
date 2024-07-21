@@ -203,7 +203,6 @@ async fn load_statline(config: Arc<Config>) -> Result<String> {
     Ok(statline)
 }
 
-
 pub async fn generate_and_send_statline(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,

@@ -1,9 +1,9 @@
 use crate::users::UserRecord;
+use log::{debug, warn};
+use log::{error, trace};
 use std::num::ParseIntError;
 use std::sync::{Arc, Mutex};
-use log::{debug, warn};
 use thiserror::Error;
-use log::error;
 
 #[derive(Debug, Error)]
 pub enum IpcError {
@@ -42,7 +42,7 @@ impl Ipc {
         }
 
         // Debug output while reading
-        error!("Read user records: {:?}", records);
+        trace!("Read user records: {:?}", records);
 
         records
     }
@@ -67,14 +67,14 @@ impl Ipc {
         }
 
         // Debug output after writing
-        debug!("Memory after write operation: {:?}", *memory);
+        trace!("Memory after write operation: {:?}", *memory);
 
         // Eject the written bytes from memory and verify correctness
         let read_back = &memory[0..bytes.len()];
-        debug!("Bytes read back from memory: {:?}", read_back);
+        trace!("Bytes read back from memory: {:?}", read_back);
 
         // Additional log to check the record during writing
-        debug!("Record written: {:?}", record);
+        trace!("Record written: {:?}", record);
     }
 }
 

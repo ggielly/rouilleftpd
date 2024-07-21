@@ -12,16 +12,16 @@ mod session;
 mod users;
 mod watchdog;
 
-use log::error;
 use crate::config::Config;
 use crate::constants::DEFAULT_CONFIG_PATH;
 use crate::core_cli::core_cli::Cli;
 use crate::helpers::{handle_command, load_config};
+use log::error;
 
 use anyhow::Result;
-use clap::{Parser};
+use clap::Parser;
 use colored::*;
-use env_logger::{Builder};
+use env_logger::Builder;
 use ipc::Ipc;
 use log::LevelFilter;
 use std::io::Write;
@@ -79,7 +79,7 @@ async fn main() -> Result<()> {
         }
     };
 
-    // Example usage
+    // Example usage for IPC
     let username = "rouilleftpd";
     let command = "LIST";
     let download_speed = 512.0; // Example value in KB/s

@@ -1,6 +1,7 @@
+use crate::helpers::generate_and_send_statline;
 use crate::session::Session;
 use crate::Config;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use std::path::{Component, PathBuf};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -45,7 +46,7 @@ pub async fn handle_cwd_command(
     );
 
     // Log the constructed directory path
-    info!("Constructed directory path: {:?}", full_path);
+    debug!("Constructed directory path: {:?}", full_path);
 
     // Validate the final directory path is within the chroot directory
     let canonical_dir_path = match full_path.canonicalize() {
@@ -81,5 +82,6 @@ pub async fn handle_cwd_command(
             .write_all(b"550 Failed to change directory.\r\n")
             .await?;
     }
+
     Ok(())
 }
