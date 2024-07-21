@@ -46,7 +46,7 @@ pub async fn handle_size_command(
     };
 
     if !file_path.exists() {
-        send_response(&writer, b"550 File not found.\r\n").await?;
+        send_response(&writer, b"550 File not found.\r\n").await?; // 550 = "File not found"
         return Ok(());
     }
 
@@ -54,6 +54,6 @@ pub async fn handle_size_command(
     let file_size = metadata.len();
 
     let response = format!("213 {}\r\n", file_size);
-    send_response(&writer, response.as_bytes()).await?;
+    send_response(&writer, response.as_bytes()).await?; // 213 = "File size okay"
     Ok(())
 }

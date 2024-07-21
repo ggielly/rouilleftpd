@@ -1,8 +1,7 @@
+use crate::users::UserRecord;
 use std::num::ParseIntError;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
-use crate::users::UserRecord;
-
 
 #[derive(Debug, Error)]
 pub enum IpcError {
@@ -18,15 +17,7 @@ pub struct Ipc {
     pub memory: Arc<Mutex<Vec<u8>>>, // Use a Vec<u8> wrapped in Arc<Mutex>> for shared memory
 }
 
-
 impl Ipc {
-    /* pub fn new(ipc_key: String) -> Self {
-        // Simulate shared memory with a Vec<u8>
-        let memory = Arc::new(Mutex::new(vec![0; 1024])); // Adjust size as needed
-
-        Self { ipc_key, memory }
-    }*/
-
     pub fn new(ipc_key: String) -> Result<Self, String> {
         // Example implementation of creating a new Ipc instance
         if ipc_key.is_empty() {
@@ -42,23 +33,23 @@ impl Ipc {
     pub fn read_user_records(&self) -> Vec<UserRecord> {
         let memory = self.memory.lock().unwrap();
         let mut records = Vec::new();
-    
+
         for chunk in memory.chunks_exact(72) {
             // Each record is 72 bytes
             let record = UserRecord::from_bytes(chunk);
             records.push(record);
         }
-    
+
         // Debug output while reading
         eprintln!("Read user records: {:?}", records);
-    
+
         records
     }
 
     pub fn write_user_record(&self, record: UserRecord) {
         let mut memory = self.memory.lock().unwrap();
         let bytes = record.to_bytes();
-    
+
         // Ensure the memory vector is large enough
         if memory.len() < bytes.len() {
             eprintln!(
@@ -68,25 +59,22 @@ impl Ipc {
             );
             memory.resize(bytes.len(), 0);
         }
-    
+
         // Writing record to the shared memory
         for (i, &byte) in bytes.iter().enumerate() {
             memory[i] = byte;
         }
-    
+
         // Debug output after writing
         eprintln!("Memory after write operation: {:?}", *memory);
-    
+
         // Eject the written bytes from memory and verify correctness
         let read_back = &memory[0..bytes.len()];
         eprintln!("Bytes read back from memory: {:?}", read_back);
-    
+
         // Additional log to check the record during writing
         eprintln!("Record written: {:?}", record);
     }
-    
-    
-
 }
 
 pub fn update_ipc(
