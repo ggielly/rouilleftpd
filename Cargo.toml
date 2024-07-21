@@ -22,8 +22,10 @@ url = "2.2"
 sysinfo = "0.21.1"
 filetime = "0.2"
 clap = { version = "4.0.0", features = ["derive"] }
+bcrypt = "0.10"
 # Remove me one implemented -> CHECK session.rs
 rand = "0.8"
+
 
 [[bin]]
 name = "rouilleftpd"

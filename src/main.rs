@@ -1,6 +1,7 @@
 mod config;
 mod constants;
 mod cookies;
+mod core_auth;
 mod core_cli;
 mod core_ftpcommand;
 mod core_log;

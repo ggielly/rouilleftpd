@@ -9,6 +9,7 @@ pub struct ServerConfig {
     pub min_homedir: String,
     pub upload_buffer_size: Option<usize>, // Optional to allow default value
     pub download_buffer_size: Option<usize>, // Optional to allow default value
+    pub passwd_file: String,             // Path to the shadow (passwd) file
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -26,6 +27,8 @@ impl Default for ServerConfig {
             min_homedir: String::from("/"),
             upload_buffer_size: Some(256 * 1024), // Default 256 KB
             download_buffer_size: Some(128 * 1024), // Default 128 KB
+
+            passwd_file: String::from("/etc/passwd"),
         }
     }
 }

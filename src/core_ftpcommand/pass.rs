@@ -1,11 +1,13 @@
+use crate::core_auth::helper::load_passwd_file;
 use crate::session::Session;
 use crate::Config;
+use bcrypt::verify;
+use colored::*;
 use log::{error, info, warn};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use colored::*;
 
 /// Handles the PASS (Password) FTP command.
 ///
@@ -22,7 +24,7 @@ use colored::*;
 /// Result<(), std::io::Error> indicating the success or failure of the operation.
 pub async fn handle_pass_command(
     writer: Arc<Mutex<TcpStream>>,
-    _config: Arc<Config>,
+    config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     password: String,
 ) -> Result<(), std::io::Error> {
@@ -33,16 +35,34 @@ pub async fn handle_pass_command(
         session.username.clone()
     };
 
+    let passwd_file_path = config.server.passwd_file.clone();
+    let passwd_map = load_passwd_file(&passwd_file_path).await;
+
     let response: &[u8] = if let Some(username) = username {
         if username.to_lowercase() == "anonymous" {
             info!("Anonymous login with password: {}", password.yellow());
             b"230 Anonymous user logged in, proceed.\r\n"
+        } else if let Some(entry) = passwd_map.get(&username) {
+            if verify(&password, &entry.get_hashed_password()).unwrap_or(false) {
+                {
+                    let mut session = session.lock().await;
+                    session.is_authenticated = true;
+                }
+                info!("User {} authenticated successfully.", username.cyan());
+                b"230 User logged in, proceed.\r\n"
+            } else {
+                warn!("Authentication failed for user {}.", username.magenta());
+                b"530 Login incorrect.\r\n"
+            }
         } else {
-            info!("User {} logged in with password: {}", username.cyan(), password.yellow());
-            b"230 User logged in, proceed.\r\n"
+            warn!("User {} not found in passwd file.", username.magenta());
+            b"530 Login incorrect.\r\n"
         }
     } else {
-        warn!("{}", "PASS command received without a preceding USER command.".magenta());
+        warn!(
+            "{}",
+            "PASS command received without a preceding USER command.".magenta()
+        );
         b"503 Bad sequence of commands.\r\n"
     };
 
@@ -52,6 +72,6 @@ pub async fn handle_pass_command(
         return Err(e);
     }
 
-    info!("User authenticated successfully.");
+    info!("Sent PASS response.");
     Ok(())
 }

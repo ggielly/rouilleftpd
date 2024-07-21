@@ -19,6 +19,7 @@ pub struct Session {
     pub byte_size: Option<u8>,    // The byte size for TYPE L (None if not applicable)
     pub base_path: PathBuf,       // chroot_dir + min_dir
     pub username: Option<String>, // Username for the session
+    pub is_authenticated: bool,   // Indicates if the user is authenticated
 }
 
 impl Session {
@@ -30,7 +31,9 @@ impl Session {
             data_stream: None,
             type_: "A".to_string(), // Default transfer type is ASCII
             byte_size: None,        // Default byte size is None
-            username: None,         // Initialize username as None
+            username: None,
+            is_authenticated: false,         // Initialize as FALSE
+            
         }
     }
 
