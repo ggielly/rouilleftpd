@@ -15,6 +15,8 @@ use crate::core_ftpcommand::site::helper::{
     respond_with_error,
     respond_with_success,
 };
+use crate::constants::SITE_ADDUSER_HELP_PATH;
+use crate::helpers::send_file_to_client;
 
 /// Handles the SITE ADDUSER command.
 ///
@@ -40,6 +42,8 @@ pub async fn handle_site_adduser_command(
 
     if args.len() < MIN_ARGS {
         warn!("Insufficient arguments for SITE ADDUSER: {:?}", args);
+        send_file_to_client(&writer, &config.server.chroot_dir, SITE_ADDUSER_HELP_PATH).await?;
+
         respond_with_error(&writer, b"501 Syntax error in parameters or arguments.\r\n").await?;
         return Ok(());
     }

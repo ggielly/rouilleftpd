@@ -11,11 +11,12 @@ pub const MAX_ADDIP_IPS: usize = 10;
 pub const MIN_DELIP_ARGS: usize = 2;
 pub const MAX_DELIP_IPS: usize = 10;
 
-pub const DEFAULT_CONFIG_PATH : &str ="/etc/rouilleftpd.conf";
+pub const DEFAULT_CONFIG_PATH: &str = "/etc/rouilleftpd.conf";
 
 // Constants specific to the RETR and STOR commands
 pub const MESSAGE_LENGTH: usize = 58;
 
+pub const MIN_DELUSER_ARGS: usize = 1;
 
 /*
   Flagname       	Flag	Description
@@ -90,4 +91,11 @@ pub const CUSTOM4: u8 = 22;
 pub const CUSTOM5: u8 = 23;
 // End of flags
 
+// Text files
 pub const STATLINE_PATH: &str = "ftp-data/text/statline.txt";
+
+// Help files
+pub const SITE_ADDIP_HELP_PATH: &str = "ftp-data/help/site.addip";
+pub const SITE_ADDUSER_HELP_PATH: &str = "ftp-data/help/site.adduser";
+pub const SITE_DELIP_HELP_PATH: &str = "ftp-data/help/site.delip";
+pub const SITE_DELUSER_HELP_PATH: &str = "ftp-data/help/site.deluser";

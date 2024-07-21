@@ -52,12 +52,7 @@ pub async fn handle_connection(
     session: Arc<Mutex<Session>>,
     ipc: Arc<Ipc>,
 ) -> Result<()> {
-    let banner_path = if cfg!(target_os = "windows") {
-        "ftp-data/text/banner.txt"
-    } else {
-        "ftp-data/text/banner.txt"
-    };
-
+    let banner_path = "ftp-data/text/banner.txt";
     let banner_text = load_banner(banner_path)?;
 
     let socket = Arc::new(Mutex::new(socket));
@@ -98,7 +93,9 @@ pub async fn handle_connection(
         }
 
         let cmd_str = parts[0].to_ascii_uppercase();
+
         let cmd = match cmd_str.as_str() {
+            "MDTM" => FtpCommand::MDTM,
             "ALLO" => FtpCommand::ALLO,
             "CDUP" => FtpCommand::CDUP,
             "FEAT" => FtpCommand::FEAT,

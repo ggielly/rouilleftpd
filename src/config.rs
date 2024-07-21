@@ -21,9 +21,9 @@ impl Default for ServerConfig {
         Self {
             listen_port: 21,
             pasv_address: String::from("0.0.0.0"),
-            ipc_key: String::from("default_key"),
-            chroot_dir: String::from("/var/ftp"),
-            min_homedir: String::from("/home/ftp"),
+            ipc_key: String::from("DEADBABE"),
+            chroot_dir: String::from("/rouilleftpd"),
+            min_homedir: String::from("/"),
             upload_buffer_size: Some(256 * 1024), // Default 256 KB
             download_buffer_size: Some(128 * 1024), // Default 128 KB
         }

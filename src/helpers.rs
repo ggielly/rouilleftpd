@@ -1,8 +1,11 @@
 use crate::{Config, Ipc};
-use anyhow::{Context, Result};
+use anyhow::Context;
+use anyhow::{anyhow, Result};
 use log::error;
 use log::info;
 use std::fs;
+use std::io::Result as IoResult;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -44,8 +47,6 @@ pub async fn handle_command(
     download_speed: f32,
     upload_speed: f32,
 ) {
-    // Your existing command handling logic
-
     // Update the user record in shared memory
     update_user_record(ipc, username, command, download_speed, upload_speed);
 }
@@ -98,9 +99,55 @@ pub fn load_banner(path: &str) -> Result<String> {
     // Check if the file is empty
     if config_str.is_empty() {
         error!("Banner file is empty: {}", path);
-        return Err(anyhow::Error::msg("Banner file is empty"));
+        return Err(anyhow::Error::msg("Banner file is empty."));
     }
 
     info!("Banner file loaded successfully: {}", path);
     Ok(config_str)
+}
+
+pub fn load_file(path: &str) -> Result<String, anyhow::Error> {
+    let file_content = fs::read_to_string(path)
+        .map_err(|e| {
+            error!("Failed to read file: {}: {}", path, e);
+            anyhow::Error::new(e)
+        })
+        .with_context(|| format!("Failed to read file: {}", path))?;
+
+    if file_content.is_empty() {
+        error!("File is empty: {}", path);
+        return Err(anyhow::Error::msg("The file is empty."));
+    }
+
+    info!("File loaded successfully: {}", path);
+    Ok(file_content)
+}
+
+pub async fn send_file_to_client(
+    writer: &Arc<Mutex<TcpStream>>,
+    chroot_dir: &str,
+    file_path: &str,
+) -> IoResult<()> {
+    let full_path = PathBuf::from(chroot_dir).join(file_path);
+    match load_file(full_path.to_str().unwrap()) {
+        Ok(content) => {
+            let mut writer = writer.lock().await;
+            for line in content.lines() {
+                let formatted_line = format!("200- {}\r\n", line);
+                writer.write_all(formatted_line.as_bytes()).await?;
+            }
+            let end_message = "200- \r\n";
+            writer.write_all(end_message.as_bytes()).await?;
+            writer.flush().await?;
+            Ok(())
+        }
+        Err(e) => {
+            error!("Failed to load file: {}", e);
+            let error_message = format!("500 Internal server error: {}\r\n", e);
+            let mut writer = writer.lock().await;
+            writer.write_all(error_message.as_bytes()).await?;
+            writer.flush().await?;
+            Ok(())
+        }
+    }
 }

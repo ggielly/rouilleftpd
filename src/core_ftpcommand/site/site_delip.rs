@@ -1,4 +1,7 @@
-use crate::constants::{MIN_DELIP_ARGS, MAX_DELIP_IPS};
+use crate::constants::SITE_DELIP_HELP_PATH;
+use crate::constants::{MAX_DELIP_IPS, MIN_DELIP_ARGS};
+use crate::core_ftpcommand::site::helper::{respond_with_error, respond_with_success};
+use crate::helpers::send_file_to_client;
 use crate::{session::Session, Config};
 use log::{info, warn};
 use std::{
@@ -9,10 +12,6 @@ use std::{
 };
 use tokio::{net::TcpStream, sync::Mutex};
 
-use crate::core_ftpcommand::site::helper::{
-    respond_with_error, respond_with_success,
-};
-
 pub async fn handle_site_delip_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
@@ -21,6 +20,7 @@ pub async fn handle_site_delip_command(
 ) -> Result<(), std::io::Error> {
     if args.len() < MIN_DELIP_ARGS {
         warn!("Insufficient arguments for SITE DELIP: {:?}", args);
+        send_file_to_client(&writer, &config.server.chroot_dir, SITE_DELIP_HELP_PATH).await?;
         respond_with_error(&writer, b"501 Syntax error in parameters or arguments.\r\n").await?;
         return Ok(());
     }
@@ -30,6 +30,7 @@ pub async fn handle_site_delip_command(
 
     if del_ips.len() > MAX_DELIP_IPS {
         warn!("Too many IPs for SITE DELIP: {:?}", args);
+        send_file_to_client(&writer, &config.server.chroot_dir, SITE_DELIP_HELP_PATH).await?;
         respond_with_error(&writer, b"501 Too many IPs. Max 10 allowed.\r\n").await?;
         return Ok(());
     }

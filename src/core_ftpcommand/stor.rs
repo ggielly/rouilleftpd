@@ -57,13 +57,13 @@ pub async fn handle_stor_command(
         let file_path = session.base_path.join(&sanitized_arg);
         if !file_path.starts_with(&session.base_path) {
             error!("Path is outside of the allowed area: {:?}", file_path);
-            send_response(&writer, b"550 Path is outside of the allowed area.\r\n").await?;
+            send_response(&writer, b"550 Path -is outside of the allowed area.\r\n").await?;
             return Ok(());
         }
         file_path
     };
 
-    // 2. Create File and Handle Errors:
+    // 2. Create File and Handle Errors
     let mut file = match File::create(&file_path).await {
         Ok(f) => f,
         Err(e) => {

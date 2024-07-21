@@ -1,0 +1,14 @@
+ ,--------------------------------------------------------.
+| USAGE: SITE ADDIP <username> <ident@ip> [<ident@ip> ...] |
+|                                                          |
+| <username> The username to add to.                       |
+| <ident@ip> The IP address to add. You can use [], ?, and |
+|            * in the ip.                                  |
+|                                                          |
+| NOTE: you can only add 10 IP's at a time.                |
+|                                                          |
+| EXAMPLE: SITE ADDIP user bobinoo@*.lolwoot.com           |
+|          SITE ADDIP user blah@192.168.1.115              |
+|          SITE ADDIP user fcuk@193.50.1.[345][123]        |
+|          SITE ADDIP user *@10.0.0.* *@169.254.13.37      |
+ `--------------------------------------------------------'

@@ -11,7 +11,6 @@ use crate::tokio::fs;
 use crate::Config;
 use std::collections::HashMap;
 
-// Load the src/cookies.rs
 
 pub async fn respond_with_error(
     writer: &Arc<Mutex<TcpStream>>,
@@ -21,25 +20,8 @@ pub async fn respond_with_error(
     writer.write_all(msg).await
 }
 
-/// Sends a success response message to the FTP client.
-///
-/// This function locks the provided TCP stream writer and writes a success message to the client.
-/// It is typically used to acknowledge the successful completion of an FTP command.
-///
-/// # Arguments
-///
-/// * `writer` - A reference to an `Arc<Mutex<TcpStream>>` that represents the TCP stream writer.
-/// * `msg` - A byte slice containing the success message to be sent to the client.
-///
-/// # Returns
-///
-/// This function returns a `Result` that is:
-/// * `Ok(())` if the message was successfully written to the client.
-/// * `Err(std::io::Error)` if there was an error writing the message.
-///
-/// # Errors
-///
-/// This function will return an error if it fails to acquire a lock on the TCP stream writer or if it fails to write the message to the stream.
+
+
 pub async fn respond_with_success(
     writer: &Arc<Mutex<TcpStream>>,
     msg: &[u8],
@@ -54,9 +36,7 @@ pub async fn respond_with_success(
 ///
 /// * `ip` - The string to validate.
 /// * `max_length` - The maximum allowed length of the string.
-///
-/// # Returns
-///
+
 /// Returns `true` if the string is a valid IPv4 address or hostname, `false` otherwise.
 pub fn is_valid_ip_or_hostname(ip: &str) -> bool {
     const IP_HOSTNAME_MAX_LENGTH: usize = 128;

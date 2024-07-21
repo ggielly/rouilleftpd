@@ -1,4 +1,4 @@
-use crate::constants::DELETED;
+use crate::constants::{DELETED, SITE_DELUSER_HELP_PATH, MIN_DELUSER_ARGS};
 use crate::core_ftpcommand::site::helper::{
     respond_with_error, respond_with_success,
 };
@@ -11,8 +11,10 @@ use std::{
     sync::Arc,
 };
 use tokio::{net::TcpStream, sync::Mutex};
+use crate::helpers::send_file_to_client;
 
-const MIN_DELUSER_ARGS: usize = 1;
+
+
 
 /// Handles the SITE DELUSER command.
 ///
@@ -27,7 +29,8 @@ const MIN_DELUSER_ARGS: usize = 1;
 ///
 /// # Returns
 ///
-/// Returns `Ok(())` on success, or an `std::io::Error` on failure.
+/// Returns `Ok(())` on success, or an `std::io::Error` on failure
+
 pub async fn handle_site_deluser_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
@@ -36,6 +39,8 @@ pub async fn handle_site_deluser_command(
 ) -> Result<(), std::io::Error> {
     if args.len() < MIN_DELUSER_ARGS {
         warn!("Insufficient arguments for SITE DELUSER: {:?}", args);
+        send_file_to_client(&writer, &config.server.chroot_dir, SITE_DELUSER_HELP_PATH).await?;
+
         respond_with_error(&writer, b"501 Syntax error in parameters or arguments.\r\n").await?;
         return Ok(());
     }
