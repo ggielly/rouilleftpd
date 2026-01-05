@@ -53,7 +53,7 @@ impl FtpCommand {
             "CDUP" => Some(FtpCommand::CDUP),
             "SIZE" => Some(FtpCommand::SIZE),
             "MDTM" => Some(FtpCommand::MDTM),
-            
+
             // Add more commands here !
             _ => None,
         }

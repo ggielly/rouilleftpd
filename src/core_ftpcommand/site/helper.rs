@@ -186,10 +186,6 @@ pub fn cleanup_cookie_statline(statline: &str, replacements: &HashMap<&str, Stri
     statline_replaced
 }
 
-
-
-
-
 pub async fn cleanup_cookie_site_user<'a>(
     user_info: &'a HashMap<&str, String>,
     template: &'a str,

@@ -1,4 +1,5 @@
 use crate::constants::MESSAGE_LENGTH;
+use crate::core_quota::manager::QuotaManager;
 use crate::helpers::pad_message;
 use crate::{
     helpers::{sanitize_input, send_response},
@@ -25,6 +26,7 @@ pub async fn handle_retr_command(
     session: Arc<Mutex<Session>>,
     arg: String,
     data_stream: Option<Arc<Mutex<TcpStream>>>,
+    quota_manager: Option<Arc<QuotaManager>>,
 ) -> io::Result<()> {
     if arg.trim().is_empty() {
         warn!("RETR command received with no arguments");
@@ -34,6 +36,29 @@ pub async fn handle_retr_command(
 
     let sanitized_arg = sanitize_input(&arg);
     info!("Received RETR command with argument: {}", sanitized_arg);
+
+    // 0. Check ratio before proceeding
+    if let Some(quota_mgr) = &quota_manager {
+        let session = session.lock().await;
+        let username = session
+            .username
+            .clone()
+            .unwrap_or_else(|| "anonymous".to_string());
+
+        // Get file size to check ratio
+        let temp_file_path = session.base_path.join(&sanitized_arg);
+        if let Ok(metadata) = tokio::fs::metadata(&temp_file_path).await {
+            let file_size = metadata.len();
+            match quota_mgr.check_download(&username, file_size).await {
+                Ok(_) => {}
+                Err(e) => {
+                    error!("Ratio check failed for user {}: {}", username, e);
+                    send_response(&writer, e.to_ftp_response().as_bytes()).await?;
+                    return Ok(());
+                }
+            }
+        }
+    }
 
     // 1. Secure Path Construction:
     let file_path = {
@@ -128,6 +153,23 @@ pub async fn handle_retr_command(
 
     send_response(&writer, b"226 File transfer complete.\r\n").await?;
     info!("File transferred successfully: {:?}", file_path);
+
+    // Update ratio after successful download
+    if let Some(quota_mgr) = &quota_manager {
+        let session = session.lock().await;
+        let username = session
+            .username
+            .clone()
+            .unwrap_or_else(|| "anonymous".to_string());
+
+        // Get the actual file size
+        if let Ok(metadata) = tokio::fs::metadata(&file_path).await {
+            let file_size = metadata.len();
+            if let Err(e) = quota_mgr.record_download(&username, file_size).await {
+                error!("Failed to update ratio for user {}: {}", username, e);
+            }
+        }
+    }
 
     Ok(())
 }

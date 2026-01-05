@@ -6,6 +6,7 @@ pub mod dele;
 pub mod feat;
 pub mod handlers;
 pub mod list;
+pub mod mdtm;
 pub mod mkd;
 pub mod noop;
 pub mod pass;
@@ -16,13 +17,12 @@ pub mod rmd;
 pub mod rnfr;
 pub mod rnto;
 pub mod site;
+pub mod size;
 pub mod stor;
 pub mod syst;
 pub mod type_; // TYPE is a reserved word, so lets use _
 pub mod user;
-pub mod size;
-pub mod mdtm;
 
 // The utils and common functions are here
-pub mod utils;
 pub mod ftpcommand;
+pub mod utils;

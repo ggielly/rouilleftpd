@@ -1,9 +1,9 @@
+use crate::Config;
+use log::{error, info};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use crate::Config;
-use log::{info, error};
 
 /// Handles the NOOP (No Operation) FTP command.
 ///
@@ -25,7 +25,7 @@ pub async fn handle_noop_command(
 ) -> Result<(), std::io::Error> {
     let mut writer = writer.lock().await;
     info!("Received NOOP command. Sending OK response.");
-    
+
     if let Err(e) = writer.write_all(b"200 OK, n00p n00p !\r\n").await {
         error!("Failed to send NOOP response: {}", e);
         return Err(e);

@@ -3,7 +3,7 @@ use crate::session::Session;
 use crate::Config;
 use anyhow::Result;
 use chrono::NaiveDateTime;
-use filetime::{FileTime, set_file_times};
+use filetime::{set_file_times, FileTime};
 use log::{error, info};
 use std::sync::Arc;
 use tokio::net::TcpStream;
@@ -27,13 +27,15 @@ pub async fn handle_site_utime_command(
     let access_time_str = parts[1];
     let modify_time_str = parts[2];
     let create_time_str = parts[3];
-    let _timezone = parts[4];  // "UTC" part, not used in this implementation
+    let _timezone = parts[4]; // "UTC" part, not used in this implementation
 
     info!("Parsed arguments - file_path: {}, access_time: {}, modify_time: {}, create_time: {}, timezone: {}",
           file_path_arg, access_time_str, modify_time_str, create_time_str, _timezone);
 
     // Sanitize the file path and remove any leading slashes
-    let sanitized_file_path = sanitize_input(file_path_arg).trim_start_matches('/').to_string();
+    let sanitized_file_path = sanitize_input(file_path_arg)
+        .trim_start_matches('/')
+        .to_string();
     info!("Sanitized file path: {}", sanitized_file_path);
 
     let resolved_path = {
@@ -58,13 +60,13 @@ pub async fn handle_site_utime_command(
     info!("Updating file times for: {}", resolved_path.display());
 
     // Parse the timestamps
-    let access_time = NaiveDateTime::parse_from_str(access_time_str, "%Y%m%d%H%M%S")
-        .map_err(|e| {
+    let access_time =
+        NaiveDateTime::parse_from_str(access_time_str, "%Y%m%d%H%M%S").map_err(|e| {
             error!("Invalid access time format: {}", e);
             std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid access time")
         })?;
-    let modify_time = NaiveDateTime::parse_from_str(modify_time_str, "%Y%m%d%H%M%S")
-        .map_err(|e| {
+    let modify_time =
+        NaiveDateTime::parse_from_str(modify_time_str, "%Y%m%d%H%M%S").map_err(|e| {
             error!("Invalid modify time format: {}", e);
             std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid modify time")
         })?;

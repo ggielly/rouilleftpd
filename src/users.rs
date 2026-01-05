@@ -42,7 +42,6 @@ impl UserRecord {
     }
 }
 
-
 // Alpha version
 pub fn update_user_record(
     ipc: &Ipc,

@@ -1,6 +1,7 @@
 use crate::core_ftpcommand::ftpcommand::FtpCommand;
 use crate::core_ftpcommand::handlers::initialize_command_handlers;
 use crate::core_log::logger::log_message;
+use crate::core_quota::manager::QuotaManager;
 use crate::helpers::load_banner;
 use crate::ipc::update_ipc;
 use crate::session::Session;
@@ -20,7 +21,12 @@ use crate::helpers::send_response;
 use crate::core_network::pasv::accept_pasv_connection;
 use crate::core_network::pasv::setup_pasv_listener;
 
-pub async fn start_server(port: u16, config: Arc<Config>, ipc: Arc<Ipc>) -> Result<()> {
+pub async fn start_server(
+    port: u16,
+    config: Arc<Config>,
+    ipc: Arc<Ipc>,
+    quota_manager: Option<Arc<QuotaManager>>,
+) -> Result<()> {
     let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
     info!("Server listening on port {}", port);
 
@@ -36,9 +42,12 @@ pub async fn start_server(port: u16, config: Arc<Config>, ipc: Arc<Ipc>) -> Resu
         let config = Arc::clone(&config);
         let session = Arc::new(Mutex::new(Session::new(base_path.clone())));
         let ipc_clone = ipc.clone();
+        let quota_manager_clone = quota_manager.clone();
 
         tokio::spawn(async move {
-            if let Err(e) = handle_connection(socket, config, session, ipc_clone).await {
+            if let Err(e) =
+                handle_connection(socket, config, session, ipc_clone, quota_manager_clone).await
+            {
                 error!("Connection error: {:?}", e);
             }
             info!("Connection closed for {:?}", addr);
@@ -51,6 +60,7 @@ pub async fn handle_connection(
     config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     ipc: Arc<Ipc>,
+    quota_manager: Option<Arc<QuotaManager>>,
 ) -> Result<()> {
     let banner_path = "ftp-data/text/banner.txt";
     let banner_text = load_banner(banner_path)?;
@@ -119,6 +129,8 @@ pub async fn handle_connection(
             "PASV" => FtpCommand::PASV,
             "TYPE" => FtpCommand::TYPE,
             "SIZE" => FtpCommand::SIZE,
+            "RATIO" => FtpCommand::SITE, // Special handling for RATIO
+            "QUOTA" => FtpCommand::SITE, // Special handling for QUOTA
             _ => {
                 let mut socket = socket.lock().await;
                 socket
@@ -172,6 +184,7 @@ pub async fn handle_connection(
                     Arc::clone(&session),
                     args.join(" "),
                     data_stream.clone(),
+                    quota_manager.clone(),
                 )
                 .await
             } else {
@@ -182,6 +195,7 @@ pub async fn handle_connection(
                     Arc::clone(&session),
                     args.join(" "),
                     None,
+                    quota_manager.clone(),
                 )
                 .await
             };

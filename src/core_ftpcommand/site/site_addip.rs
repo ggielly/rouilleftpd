@@ -24,7 +24,7 @@ pub async fn handle_site_addip_command(
         send_file_to_client(&writer, &config.server.chroot_dir, SITE_ADDIP_HELP_PATH).await?;
 
         respond_with_error(&writer, b"501 Syntax error in parameters or arguments.\r\n").await?;
-        
+
         return Ok(());
     }
 

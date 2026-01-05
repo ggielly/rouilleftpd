@@ -8,14 +8,11 @@ use std::{
 };
 use tokio::{net::TcpStream, sync::Mutex};
 
+use crate::constants::SITE_ADDUSER_HELP_PATH;
 use crate::core_ftpcommand::site::helper::{
-    is_valid_ip_or_hostname, 
-    is_valid_password, 
-    is_valid_username, 
-    respond_with_error,
+    is_valid_ip_or_hostname, is_valid_password, is_valid_username, respond_with_error,
     respond_with_success,
 };
-use crate::constants::SITE_ADDUSER_HELP_PATH;
 use crate::helpers::send_file_to_client;
 
 /// Handles the SITE ADDUSER command.

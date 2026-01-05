@@ -1,0 +1,28 @@
+# Exemple de fichier utilisateur avec quota et ratio
+# Format inspiré de glFTPd
+
+# Informations de base
+username=testuser
+password=$2b$12$somehashedpassword
+uid=1000
+gid=1000
+homedir=/site-ftp/testuser
+shell=/bin/false
+
+# Quota et ratio
+quota=5368709120  # 5 GB en octets
+ratio=1:2        # 1 upload pour 2 downloads
+
+# Permissions
+allow_upload=yes
+allow_download=yes
+allow_list=yes
+allow_delete=yes
+allow_mkdir=yes
+allow_rmdir=yes
+allow_rename=yes
+
+# Restrictions
+max_upload_speed=1024  # KB/s
+max_download_speed=2048  # KB/s
+max_connections=5

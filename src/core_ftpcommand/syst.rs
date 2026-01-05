@@ -1,9 +1,9 @@
+use anyhow::Result;
+use log::{error, info};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use anyhow::Result;
-use log::{info, error};
 
 /// Handles the SYST (System) FTP command.
 ///
@@ -16,9 +16,7 @@ use log::{info, error};
 /// # Returns
 ///
 /// Result<(), std::io::Error> indicating the success or failure of the operation.
-pub async fn handle_syst_command(
-    writer: Arc<Mutex<TcpStream>>,
-) -> Result<(), std::io::Error> {
+pub async fn handle_syst_command(writer: Arc<Mutex<TcpStream>>) -> Result<(), std::io::Error> {
     // Define the system type. Typically "UNIX" for Unix-like systems.
     let system_type = "215 UNIX Type: L8\r\n";
 

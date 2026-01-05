@@ -1,7 +1,6 @@
-use crate::constants::{DELETED, SITE_DELUSER_HELP_PATH, MIN_DELUSER_ARGS};
-use crate::core_ftpcommand::site::helper::{
-    respond_with_error, respond_with_success,
-};
+use crate::constants::{DELETED, MIN_DELUSER_ARGS, SITE_DELUSER_HELP_PATH};
+use crate::core_ftpcommand::site::helper::{respond_with_error, respond_with_success};
+use crate::helpers::send_file_to_client;
 use crate::{session::Session, Config};
 use log::{info, warn};
 use std::{
@@ -11,10 +10,6 @@ use std::{
     sync::Arc,
 };
 use tokio::{net::TcpStream, sync::Mutex};
-use crate::helpers::send_file_to_client;
-
-
-
 
 /// Handles the SITE DELUSER command.
 ///

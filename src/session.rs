@@ -32,8 +32,7 @@ impl Session {
             type_: "A".to_string(), // Default transfer type is ASCII
             byte_size: None,        // Default byte size is None
             username: None,
-            is_authenticated: false,         // Initialize as FALSE
-            
+            is_authenticated: false, // Initialize as FALSE
         }
     }
 
@@ -118,7 +117,7 @@ impl SessionManager {
 
     pub fn log_disk_info(&self) {
         for disk in self.system.disks() {
-            println!("Disk {:?}: {:?}", disk.type_(), disk.name());
+            println!("Disk {:?}: {:?}", disk.kind(), disk.name());
         }
     }
     pub fn get_session(&self, id: &str) -> Option<&Session> {

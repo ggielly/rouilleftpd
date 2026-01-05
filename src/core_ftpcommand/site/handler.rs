@@ -1,23 +1,31 @@
 use crate::core_ftpcommand::site::helper::respond_with_error;
 use crate::core_ftpcommand::site::site_addip::handle_site_addip_command;
 use crate::core_ftpcommand::site::site_adduser::handle_site_adduser_command;
+use crate::core_ftpcommand::site::site_chmod::handle_site_chmod_command;
 use crate::core_ftpcommand::site::site_delip::handle_site_delip_command;
 use crate::core_ftpcommand::site::site_deluser::handle_site_deluser_command;
+use crate::core_ftpcommand::site::site_group::handle_site_group_command;
+use crate::core_ftpcommand::site::site_idle::handle_site_idle_command;
+use crate::core_ftpcommand::site::site_new::handle_site_new_command;
+use crate::core_ftpcommand::site::site_quota::handle_site_quota_command;
+use crate::core_ftpcommand::site::site_ratio::handle_site_ratio_command;
 use crate::core_ftpcommand::site::site_user::handle_site_user_command;
 use crate::core_ftpcommand::site::site_utime::handle_site_utime_command;
+use crate::core_ftpcommand::site::site_who::handle_site_who_command;
 
-
-use crate::{session::Session, Config}; // for Config and Session
-use log::{info, warn}; // for logging
-use std::sync::Arc; // for Arc
-use tokio::net::TcpStream; // for TcpStream
-use tokio::sync::Mutex; // for Mutex
+use crate::core_quota::manager::QuotaManager;
+use crate::{session::Session, Config};
+use log::{info, warn};
+use std::sync::Arc;
+use tokio::net::TcpStream;
+use tokio::sync::Mutex;
 
 pub async fn handle_site_command(
     writer: Arc<Mutex<TcpStream>>,
     config: Arc<Config>,
     session: Arc<Mutex<Session>>,
     arg: String,
+    quota_manager: Option<Arc<QuotaManager>>,
 ) -> Result<(), std::io::Error> {
     let mut args: Vec<&str> = arg.trim().split(' ').collect();
 
@@ -60,6 +68,34 @@ pub async fn handle_site_command(
         "UTIME" => {
             info!("Handling SITE UTIME command with args: {:?}", sub_args);
             handle_site_utime_command(writer, config, session, sub_args.join(" ")).await
+        }
+        "RATIO" => {
+            info!("Handling SITE RATIO command");
+            handle_site_ratio_command(writer, config, session, sub_args, quota_manager).await
+        }
+        "QUOTA" => {
+            info!("Handling SITE QUOTA command");
+            handle_site_quota_command(writer, config, session, sub_args, quota_manager).await
+        }
+        "GROUP" => {
+            info!("Handling SITE GROUP command");
+            handle_site_group_command(writer, config, session, sub_args, quota_manager).await
+        }
+        "CHMOD" => {
+            info!("Handling SITE CHMOD command");
+            handle_site_chmod_command(writer, config, session, sub_args, quota_manager).await
+        }
+        "WHO" => {
+            info!("Handling SITE WHO command");
+            handle_site_who_command(writer, config, session, sub_args, quota_manager).await
+        }
+        "NEW" => {
+            info!("Handling SITE NEW command");
+            handle_site_new_command(writer, config, session, sub_args, quota_manager).await
+        }
+        "IDLE" => {
+            info!("Handling SITE IDLE command");
+            handle_site_idle_command(writer, config, session, sub_args, quota_manager).await
         }
         _ => {
             warn!("Unknown SITE subcommand: {}", subcommand);

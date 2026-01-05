@@ -40,14 +40,14 @@ pub async fn handle_allo_command(
     Ok(())
 }*/
 
+use crate::session::Session;
+use crate::Config;
 use anyhow::Result;
 use log::{error, info};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex as TokioMutex;
-use crate::Config;
-use crate::session::Session;
 
 pub async fn handle_allo_command(
     writer: Arc<TokioMutex<TcpStream>>,
@@ -55,7 +55,6 @@ pub async fn handle_allo_command(
     _session: Arc<TokioMutex<Session>>,
     _arg: String,
 ) -> Result<(), std::io::Error> {
-
     // Log the received ALLO command.
     info!("Received ALLO command with argument: {}", _arg);
 

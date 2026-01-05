@@ -1,4 +1,3 @@
-
 // These cookies use a printf-style type indicator, see 'man 3 printf'.
 // Types to be used are: %d = decimal, %f = float and %s = string.
 // WARNING: Be sure the above types are used correctly with the right cookie.
@@ -11,22 +10,43 @@
 pub const GENERAL_COOKIES: &[(&str, &str)] = &[
     ("%[%f]A", "Last realtime average transfer rate in KiB/s"),
     ("%[%f]F", "Free space in CWD in MiB"),
-    ("%[%f]X", "Free space in CWD in size set by the display_size_unit setting"),
+    (
+        "%[%f]X",
+        "Free space in CWD in size set by the display_size_unit setting",
+    ),
     ("%[%s]E", "Email address, empty if no email setting exists"),
     ("%[%d]M", "Max # of users allowed online"),
     ("%[%s]T", "Current time and date"),
-    ("%[%s]D", "Date and time current file was last modified, n/a if no file"),
+    (
+        "%[%s]D",
+        "Date and time current file was last modified, n/a if no file",
+    ),
     ("%[%s]R", "Remote host"),
     ("%[%s]H", "Hostname"),
-    ("%[%s]S", "Sitename long format, SITE if no sitename_long setting exists"),
-    ("%[%s]s", "Sitename short format, SITE if no sitename_short setting exists"),
+    (
+        "%[%s]S",
+        "Sitename long format, SITE if no sitename_long setting exists",
+    ),
+    (
+        "%[%s]s",
+        "Sitename short format, SITE if no sitename_short setting exists",
+    ),
     ("%[%d]c", "Counter"),
     ("%[%s]d", "Current working directory, dirname only"),
     ("%[%s]b", "Name of current section (based on pwd)"),
-    ("%[%s]a", "Name of requested section (based on user input or related stats)"),
+    (
+        "%[%s]a",
+        "Name of requested section (based on user input or related stats)",
+    ),
     ("%[%s]P", "Type of TLS connection: ctrl&data|ctrl|none"),
-    ("%[%d]B*", "# of users currently logged in (can use any symbol instead of *)"),
-    ("%[%d]Bo", "# of users currently logged in excluding the hidden users"),
+    (
+        "%[%d]B*",
+        "# of users currently logged in (can use any symbol instead of *)",
+    ),
+    (
+        "%[%d]Bo",
+        "# of users currently logged in excluding the hidden users",
+    ),
     ("%[%s]V", "Speed unit to display"),
     ("%[%s]Y", "Size unit to display"),
 ];
@@ -38,20 +58,62 @@ pub struct UserCookie {
 }
 
 pub const USER_COOKIES: &[UserCookie] = &[
-    UserCookie { code: "%[%s]Iu", description: "Username" },
-    UserCookie { code: "%[%s]I$", description: "User's comment" },
-    UserCookie { code: "%[%s]I!", description: "User's expiring date as YYYY-MM-DD or Never if 0" },
-    UserCookie { code: "%[%s]I-", description: "The user that added this user" },
-    UserCookie { code: "%[%s]Iy", description: "Groups: long string separated by commas" },
-    UserCookie { code: "%[%s]Ia", description: "Added date as YYYY-MM-DD" },
-    UserCookie { code: "%[%s]Ib", description: "Banned date as YYYY-MM-DD" },
-    UserCookie { code: "%[%s]Ix", description: "Number of logins" },
-    UserCookie { code: "%[%s]Iv", description: "Number of logouts" },
-    UserCookie { code: "%[%s]Iw", description: "Time since last login as a long string" },
-    UserCookie { code: "%[%s]It", description: "User's tagline" },
-    UserCookie { code: "%[%s]Ip", description: "User's IP address" },
-    UserCookie { code: "%[%s]Ig", description: "User's primary group" },
-    UserCookie { code: "%[%s]Igx", description: "User's extended groups" },
+    UserCookie {
+        code: "%[%s]Iu",
+        description: "Username",
+    },
+    UserCookie {
+        code: "%[%s]I$",
+        description: "User's comment",
+    },
+    UserCookie {
+        code: "%[%s]I!",
+        description: "User's expiring date as YYYY-MM-DD or Never if 0",
+    },
+    UserCookie {
+        code: "%[%s]I-",
+        description: "The user that added this user",
+    },
+    UserCookie {
+        code: "%[%s]Iy",
+        description: "Groups: long string separated by commas",
+    },
+    UserCookie {
+        code: "%[%s]Ia",
+        description: "Added date as YYYY-MM-DD",
+    },
+    UserCookie {
+        code: "%[%s]Ib",
+        description: "Banned date as YYYY-MM-DD",
+    },
+    UserCookie {
+        code: "%[%s]Ix",
+        description: "Number of logins",
+    },
+    UserCookie {
+        code: "%[%s]Iv",
+        description: "Number of logouts",
+    },
+    UserCookie {
+        code: "%[%s]Iw",
+        description: "Time since last login as a long string",
+    },
+    UserCookie {
+        code: "%[%s]It",
+        description: "User's tagline",
+    },
+    UserCookie {
+        code: "%[%s]Ip",
+        description: "User's IP address",
+    },
+    UserCookie {
+        code: "%[%s]Ig",
+        description: "User's primary group",
+    },
+    UserCookie {
+        code: "%[%s]Igx",
+        description: "User's extended groups",
+    },
 ];
 
 /// Oneliners cookie definitions
@@ -117,28 +179,52 @@ pub const COOKIE_DEFINITIONS: &[(&str, &str)] = &[
     // General Cookies
     ("%[%f]A", "Last realtime average transfer rate in KiB/s"),
     ("%[%f]F", "Free space in CWD in MiB"),
-    ("%[%f]X", "Free space in CWD in size set by the display_size_unit setting"),
+    (
+        "%[%f]X",
+        "Free space in CWD in size set by the display_size_unit setting",
+    ),
     ("%[%s]E", "Email address, empty if no email setting exists"),
     ("%[%d]M", "Max # of users allowed online"),
     ("%[%s]T", "Current time and date"),
-    ("%[%s]D", "Date and time current file was last modified, n/a if no file"),
+    (
+        "%[%s]D",
+        "Date and time current file was last modified, n/a if no file",
+    ),
     ("%[%s]R", "Remote host"),
     ("%[%s]H", "Hostname"),
-    ("%[%s]S", "Sitename long format, SITE if no sitename_long setting exists"),
-    ("%[%s]s", "Sitename short format, SITE if no sitename_short setting exists"),
+    (
+        "%[%s]S",
+        "Sitename long format, SITE if no sitename_long setting exists",
+    ),
+    (
+        "%[%s]s",
+        "Sitename short format, SITE if no sitename_short setting exists",
+    ),
     ("%[%d]c", "Counter"),
     ("%[%s]d", "Current working directory, dirname only"),
     ("%[%s]b", "Name of current section (based on pwd)"),
-    ("%[%s]a", "Name of requested section (based on user input or related stats)"),
+    (
+        "%[%s]a",
+        "Name of requested section (based on user input or related stats)",
+    ),
     ("%[%s]P", "Type of TLS connection: ctrl&data|ctrl|none"),
-    ("%[%d]B*", "# of users currently logged in (can use any symbol instead of *)"),
-    ("%[%d]Bo", "# of users currently logged in excluding the hidden users"),
+    (
+        "%[%d]B*",
+        "# of users currently logged in (can use any symbol instead of *)",
+    ),
+    (
+        "%[%d]Bo",
+        "# of users currently logged in excluding the hidden users",
+    ),
     ("%[%s]V", "Speed unit to display"),
     ("%[%s]Y", "Size unit to display"),
     // User Cookies
     ("%[%s]Iu", "Username"),
     ("%[%s]I$", "User's comment"),
-    ("%[%s]I!", "User's expiring date as YYYY-MM-DD or Never if 0"),
+    (
+        "%[%s]I!",
+        "User's expiring date as YYYY-MM-DD or Never if 0",
+    ),
     ("%[%s]I-", "The user that added this user"),
     ("%[%s]Iy", "Groups: long string separated by commas"),
     ("%[%s]Ia", "Added date as YYYY-MM-DD"),

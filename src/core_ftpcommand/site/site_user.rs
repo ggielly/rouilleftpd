@@ -1,6 +1,4 @@
-use crate::core_ftpcommand::site::helper::{
-    respond_with_error, respond_with_success,
-};
+use crate::core_ftpcommand::site::helper::{respond_with_error, respond_with_success};
 use crate::{session::Session, Config};
 
 use crate::constants::DELETED;
